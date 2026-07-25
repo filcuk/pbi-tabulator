@@ -1,0 +1,67 @@
+/* Converter page layout */
+
+.converter {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.converter-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+  align-items: flex-end;
+}
+
+.converter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: min(100%, 12rem);
+}
+
+.converter-field-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.converter-panes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.converter-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.converter-pane h2 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.converter-pane .code-block,
+.converter-pane .tabular-input {
+  width: 100%;
+}
+
+.converter-pane .code-block-body {
+  min-height: 16rem;
+}
+
+.converter-pane .code-block-editor,
+.converter-pane .code-block pre {
+  min-height: 16rem;
+}
+
+@media (max-width: 900px) {
+  .converter-panes {
+    grid-template-columns: 1fr;
+  }
+}

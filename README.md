@@ -1,6 +1,13 @@
 # Power BI Tabulator
 
-Static microapp built on the [microapp-template](https://github.com/filcuk/microapp-template) design system.
+Convert between an editable table, DAX dynamic tables, and Power Query M — a static microapp on the [microapp-template](https://github.com/filcuk/microapp-template) design system.
+
+## Features
+
+- **Source / target switches** — Tabular, DAX, or M on each side (same language on both sides is not allowed)
+- **Tabular input** — typed columns (text, number, logical), paste from Excel/TSV
+- **DAX dialects** — `DATATABLE()`, table constructor via `SELECTCOLUMNS` + `{}`, and `UNION` / `ROW`
+- **M dialects** — `#table`, `Table.FromRecords`, and Enter Data–style `Binary.FromText` + `Binary.Decompress`
 
 ## Quick start
 

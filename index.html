@@ -3,7 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Power BI Tabulator" />
+    <meta
+      name="description"
+      content="Convert between tabular data, DAX dynamic tables, and Power Query M"
+    />
     <title>Power BI Tabulator</title>
     <link rel="icon" href="app/res/app-light.svg" type="image/svg+xml" data-brand-icon />
     <script>window.__MICROAPP__={themeStorageKey:"pbi-tabulator-theme"};</script>
@@ -17,9 +20,156 @@
         <img class="site-logo brand-icon--dark" src="app/res/app-dark.svg" alt="" width="40" height="40" aria-hidden="true" />
         <h1>Power BI Tabulator</h1>
       </div>
+      <p class="tagline">Convert between a table, DAX, and Power Query M</p>
     </header>
 
-    <main id="main"></main>
+    <main id="main">
+      <div
+        id="convert-error"
+        class="banner banner-error hidden"
+        role="alert"
+        hidden
+      >
+        <span class="banner-icon" data-icon="error" data-icon-class="banner-icon-svg"></span>
+        <span class="banner-body" id="convert-error-body">Conversion error</span>
+      </div>
+
+      <section class="converter" aria-label="Table converter">
+        <div class="converter-toolbar">
+          <div class="converter-field">
+            <span class="converter-field-label" id="source-label">Source</span>
+            <div
+              class="segmented-control"
+              id="source-control"
+              data-segmented-control-default="tabular"
+            >
+              <div class="segmented-control-list" role="radiogroup" aria-labelledby="source-label">
+                <button type="button" class="segmented-control-item" role="radio"
+                  aria-checked="true" data-segmented-control-value="tabular">Tabular</button>
+                <button type="button" class="segmented-control-item" role="radio"
+                  aria-checked="false" data-segmented-control-value="dax">DAX</button>
+                <button type="button" class="segmented-control-item" role="radio"
+                  aria-checked="false" data-segmented-control-value="m">M</button>
+              </div>
+              <input type="hidden" class="segmented-control-value" name="source" value="tabular" />
+            </div>
+          </div>
+
+          <div class="converter-field">
+            <span class="converter-field-label" id="target-label">Target</span>
+            <div
+              class="segmented-control"
+              id="target-control"
+              data-segmented-control-default="dax"
+            >
+              <div class="segmented-control-list" role="radiogroup" aria-labelledby="target-label">
+                <button type="button" class="segmented-control-item" role="radio"
+                  aria-checked="false" data-segmented-control-value="tabular">Tabular</button>
+                <button type="button" class="segmented-control-item" role="radio"
+                  aria-checked="true" data-segmented-control-value="dax">DAX</button>
+                <button type="button" class="segmented-control-item" role="radio"
+                  aria-checked="false" data-segmented-control-value="m">M</button>
+              </div>
+              <input type="hidden" class="segmented-control-value" name="target" value="dax" />
+            </div>
+          </div>
+
+          <div class="converter-field" id="dax-dialect-field">
+            <span class="converter-field-label" id="dax-dialect-label">DAX format</span>
+            <div
+              class="segmented-control"
+              id="dax-dialect-control"
+              data-segmented-control-default="datatable"
+            >
+              <div class="segmented-control-list" role="radiogroup" aria-labelledby="dax-dialect-label">
+                <button type="button" class="segmented-control-item" role="radio"
+                  aria-checked="true" data-segmented-control-value="datatable">DATATABLE</button>
+                <button type="button" class="segmented-control-item" role="radio"
+                  aria-checked="false" data-segmented-control-value="constructor">{}</button>
+                <button type="button" class="segmented-control-item" role="radio"
+                  aria-checked="false" data-segmented-control-value="union-row">UNION / ROW</button>
+              </div>
+              <input type="hidden" class="segmented-control-value" name="dax-dialect" value="datatable" />
+            </div>
+          </div>
+
+          <div class="converter-field hidden" id="m-dialect-field" hidden>
+            <span class="converter-field-label" id="m-dialect-label">M format</span>
+            <div
+              class="segmented-control"
+              id="m-dialect-control"
+              data-segmented-control-default="table"
+            >
+              <div class="segmented-control-list" role="radiogroup" aria-labelledby="m-dialect-label">
+                <button type="button" class="segmented-control-item" role="radio"
+                  aria-checked="true" data-segmented-control-value="table">#table</button>
+                <button type="button" class="segmented-control-item" role="radio"
+                  aria-checked="false" data-segmented-control-value="from-records">FromRecords</button>
+                <button type="button" class="segmented-control-item" role="radio"
+                  aria-checked="false" data-segmented-control-value="binary-from-text">Binary.FromText</button>
+              </div>
+              <input type="hidden" class="segmented-control-value" name="m-dialect" value="table" />
+            </div>
+          </div>
+        </div>
+
+        <div class="converter-panes">
+          <section class="converter-pane" aria-labelledby="input-heading">
+            <h2 id="input-heading">Input</h2>
+            <div id="input-tabular-wrap">
+              <div
+                class="tabular-input"
+                id="input-tabular"
+                aria-label="Source table"
+              ></div>
+            </div>
+            <div id="input-code-wrap" class="hidden" hidden>
+              <div
+                class="code-block"
+                id="input-code"
+                data-code-mode="edit"
+                data-code-copy="true"
+                data-code-highlight="false"
+                data-code-line-numbers="false"
+                data-code-editor-label="Source code"
+              >
+                <div class="code-block-body">
+                  <button type="button" class="code-block-copy btn" aria-label="Copy source code">Copy</button>
+                  <pre><code></code></pre>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="converter-pane" aria-labelledby="output-heading">
+            <h2 id="output-heading">Output</h2>
+            <div id="output-tabular-wrap" class="hidden" hidden>
+              <div
+                class="tabular-input"
+                id="output-tabular"
+                aria-label="Output table"
+                data-tabular-input-disabled
+              ></div>
+            </div>
+            <div id="output-code-wrap">
+              <div
+                class="code-block"
+                id="output-code"
+                data-code-mode="select"
+                data-code-copy="true"
+                data-code-highlight="false"
+                data-code-line-numbers="false"
+              >
+                <div class="code-block-body">
+                  <button type="button" class="code-block-copy btn" aria-label="Copy output code">Copy</button>
+                  <pre><code></code></pre>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
 
     <script type="module" src="app/main.js"></script>
   </body>
