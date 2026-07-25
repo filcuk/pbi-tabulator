@@ -4,13 +4,20 @@
  * Dialects: table | from-records | binary-from-text
  */
 
+import { ConvertError, normalizeTable } from "./model.js";
 import {
-  ConvertError,
-  mapColumnTypeToM,
-  normalizeTable,
-} from "./model.js";
+  effectiveMType,
+  outputTypeToCanonical,
+} from "./output-types.js";
 import { formatMFieldName, formatMLiteral, quoteString } from "./scan.js";
 import { encodeJsonDeflateBase64 } from "./binary.js";
+
+/**
+ * @param {import("./model.js").Column} col
+ */
+function mFormatType(col) {
+  return outputTypeToCanonical("m", effectiveMType(col));
+}
 
 /**
  * @param {import("./model.js").TableModel} table
@@ -38,7 +45,7 @@ export function generateM(table, dialect = "table") {
 /** @param {import("./model.js").TableModel} model */
 function typeTableClause(model) {
   const fields = model.columns
-    .map((col) => `${formatMFieldName(col.label)} = ${mapColumnTypeToM(col.type)}`)
+    .map((col) => `${formatMFieldName(col.label)} = ${effectiveMType(col)}`)
     .join(", ");
   return `type table [${fields}]`;
 }
@@ -47,7 +54,7 @@ function typeTableClause(model) {
 function generateHashTable(model) {
   const rows = model.rows.map((row) => {
     const cells = model.columns.map((col) =>
-      formatMLiteral(row.cells[col.id], col.type)
+      formatMLiteral(row.cells[col.id], mFormatType(col))
     );
     return `{${cells.join(", ")}}`;
   });
@@ -71,7 +78,7 @@ function generateFromRecords(model) {
   const records = model.rows.map((row) => {
     const fields = model.columns.map((col) => {
       const name = formatMFieldName(col.label);
-      const value = formatMLiteral(row.cells[col.id], col.type);
+      const value = formatMLiteral(row.cells[col.id], mFormatType(col));
       return `${name} = ${value}`;
     });
     return `[${fields.join(", ")}]`;
@@ -87,10 +94,11 @@ async function generateBinaryFromText(model) {
   const jsonRows = model.rows.map((row) =>
     model.columns.map((col) => {
       const v = row.cells[col.id];
-      if (col.type === "number") {
+      const formatType = mFormatType(col);
+      if (formatType === "number") {
         return v === null || v === undefined || v === "" ? null : Number(v);
       }
-      if (col.type === "logical") return Boolean(v);
+      if (formatType === "logical") return Boolean(v);
       return v === null || v === undefined ? "" : String(v);
     })
   );

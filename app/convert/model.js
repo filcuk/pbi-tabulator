@@ -4,6 +4,7 @@
  * Shape matches tabular-input getData():
  *   { columns: [{ id, label, type }], rows: [{ id, cells }] }
  * Types: text | number | logical
+ * Optional outputType: exact DAX/M type used when generating (see output-types.js).
  */
 
 import {
@@ -13,7 +14,7 @@ import {
 } from "../components/tabular-input.js";
 
 /** @typedef {"text" | "number" | "logical"} ColumnType */
-/** @typedef {{ id: string, label: string, type: ColumnType }} Column */
+/** @typedef {{ id: string, label: string, type: ColumnType, outputType?: string }} Column */
 /** @typedef {{ id: string, cells: Record<string, string | number | boolean | null> }} Row */
 /** @typedef {{ columns: Column[], rows: Row[] }} TableModel */
 
@@ -163,10 +164,15 @@ export function normalizeTable(data) {
       id = `${id}-${index + 1}`;
     }
     usedIds.add(id);
+    const outputType =
+      col?.outputType !== undefined && col?.outputType !== null
+        ? String(col.outputType).trim()
+        : "";
     return {
       id,
       label,
       type: parseColumnType(col?.type),
+      ...(outputType ? { outputType } : {}),
     };
   });
 

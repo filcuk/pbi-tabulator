@@ -14,6 +14,12 @@ import {
   normalizeTable,
   parse,
 } from "./convert/index.js";
+import {
+  isValidOutputType,
+  outputTypeOptions,
+  remapOutputType,
+  suggestOutputType,
+} from "./convert/output-types.js";
 
 const DEBOUNCE_MS = 280;
 
@@ -28,6 +34,10 @@ const SAMPLE = normalizeTable({
     { cells: { name: "Bob", age: 25, active: false } },
   ],
 });
+
+/**
+ * @typedef {{ outputType: string, locked: boolean }} ColumnTypeConfig
+ */
 
 /**
  * @param {string | number | boolean | null | undefined} value
@@ -129,6 +139,8 @@ export function initConverterApp({ root = document } = {}) {
   const outputTabularWrap = root.querySelector("#output-tabular-wrap");
   const outputCodeWrap = root.querySelector("#output-code-wrap");
   const outputTableEl = root.querySelector("#output-table");
+  const configSection = root.querySelector("#config-section");
+  const configColumnsEl = root.querySelector("#config-columns");
 
   /** @type {import("./convert/model.js").TableModel} */
   let model = SAMPLE;
@@ -144,6 +156,9 @@ export function initConverterApp({ root = document } = {}) {
   /** @type {ReturnType<typeof initTable> | null} */
   let outputTable = null;
 
+  /** @type {Map<string, ColumnTypeConfig>} */
+  const typeConfig = new Map();
+
   const inputTabular = initTabularInput(root.querySelector("#input-tabular"), {
     columns: model.columns,
     rows: model.rows,
@@ -151,6 +166,8 @@ export function initConverterApp({ root = document } = {}) {
       if (syncing || source !== "tabular") return;
       if (changeSource === "init") return;
       model = normalizeTable({ columns, rows });
+      syncTypeConfigFromModel({ remappingLang: null });
+      renderConfigUi();
       scheduleConvert();
     },
   });
@@ -227,6 +244,173 @@ export function initConverterApp({ root = document } = {}) {
     }, DEBOUNCE_MS);
   }
 
+  /** @returns {"dax" | "m" | null} */
+  function configLang() {
+    if (source !== "tabular") return null;
+    if (target === "dax" || target === "m") return target;
+    return null;
+  }
+
+  function configVisible() {
+    return configLang() !== null;
+  }
+
+  /**
+   * @param {import("./convert/model.js").Column} col
+   * @param {"dax" | "m"} lang
+   */
+  function columnValues(col) {
+    return model.rows.map((row) => row.cells[col.id]);
+  }
+
+  /**
+   * Keep typeConfig in sync with model columns. Unlocked columns are re-suggested.
+   * @param {{ remappingLang?: { from: "dax" | "m", to: "dax" | "m" } | null }} [opts]
+   */
+  function syncTypeConfigFromModel({ remappingLang = null } = {}) {
+    const lang = configLang();
+    if (!lang) return;
+
+    const nextIds = new Set(model.columns.map((col) => col.id));
+    for (const id of [...typeConfig.keys()]) {
+      if (!nextIds.has(id)) typeConfig.delete(id);
+    }
+
+    for (const col of model.columns) {
+      const existing = typeConfig.get(col.id);
+      const suggested = suggestOutputType(lang, col.type, columnValues(col));
+
+      if (!existing) {
+        typeConfig.set(col.id, { outputType: suggested, locked: false });
+        continue;
+      }
+
+      if (remappingLang && existing.locked) {
+        const remapped = remapOutputType(
+          remappingLang.from,
+          remappingLang.to,
+          existing.outputType
+        );
+        if (remapped) {
+          typeConfig.set(col.id, { outputType: remapped, locked: true });
+        } else {
+          typeConfig.set(col.id, { outputType: suggested, locked: false });
+        }
+        continue;
+      }
+
+      if (existing.locked) {
+        if (!isValidOutputType(lang, existing.outputType)) {
+          typeConfig.set(col.id, { outputType: suggested, locked: false });
+        }
+        continue;
+      }
+
+      typeConfig.set(col.id, { outputType: suggested, locked: false });
+    }
+  }
+
+  /**
+   * Attach configured outputType onto a copy of the model for generation.
+   * @param {import("./convert/model.js").TableModel} table
+   * @param {"dax" | "m"} lang
+   */
+  function modelWithOutputTypes(table, lang) {
+    return normalizeTable({
+      columns: table.columns.map((col) => {
+        const cfg = typeConfig.get(col.id);
+        const outputType =
+          cfg?.outputType && isValidOutputType(lang, cfg.outputType)
+            ? cfg.outputType
+            : suggestOutputType(lang, col.type, table.rows.map((r) => r.cells[col.id]));
+        return { ...col, outputType };
+      }),
+      rows: table.rows,
+    });
+  }
+
+  function renderConfigUi() {
+    if (!configColumnsEl) return;
+
+    const lang = configLang();
+    if (!lang) {
+      configColumnsEl.replaceChildren();
+      return;
+    }
+
+    const options = outputTypeOptions(lang);
+
+    if (model.columns.length === 0) {
+      const empty = document.createElement("p");
+      empty.className = "converter-config-empty";
+      empty.textContent = "Add columns in the input table to configure types.";
+      configColumnsEl.replaceChildren(empty);
+      return;
+    }
+
+    const frag = document.createDocumentFragment();
+
+    for (const col of model.columns) {
+      const cfg = typeConfig.get(col.id) ?? {
+        outputType: suggestOutputType(lang, col.type, columnValues(col)),
+        locked: false,
+      };
+      if (!typeConfig.has(col.id)) typeConfig.set(col.id, cfg);
+
+      const row = document.createElement("div");
+      row.className = "converter-config-row";
+      row.setAttribute("role", "listitem");
+
+      const name = document.createElement("span");
+      name.className = "converter-config-name";
+      name.textContent = col.label || col.id;
+      name.title = col.label || col.id;
+
+      const select = document.createElement("select");
+      select.className = "input converter-config-type";
+      select.dataset.columnId = col.id;
+      select.setAttribute(
+        "aria-label",
+        `Output type for ${col.label || col.id}`
+      );
+
+      for (const opt of options) {
+        const option = document.createElement("option");
+        option.value = opt.value;
+        option.textContent = opt.label;
+        if (opt.value === cfg.outputType) option.selected = true;
+        select.append(option);
+      }
+
+      if (!options.some((opt) => opt.value === cfg.outputType)) {
+        const option = document.createElement("option");
+        option.value = cfg.outputType;
+        option.textContent = cfg.outputType;
+        option.selected = true;
+        select.append(option);
+      }
+
+      select.addEventListener("change", () => {
+        typeConfig.set(col.id, {
+          outputType: select.value,
+          locked: true,
+        });
+        renderConfigUi();
+        void runConvert();
+      });
+
+      const lock = document.createElement("span");
+      lock.className = "converter-config-lock";
+      lock.dataset.locked = cfg.locked ? "true" : "false";
+      lock.textContent = cfg.locked ? "Locked" : "Auto";
+
+      row.append(name, select, lock);
+      frag.append(row);
+    }
+
+    configColumnsEl.replaceChildren(frag);
+  }
+
   function updateDialectVisibility() {
     setHidden(daxDialectField, target !== "dax");
     setHidden(mDialectField, target !== "m");
@@ -239,6 +423,7 @@ export function initConverterApp({ root = document } = {}) {
     setHidden(inputCodeWrap, sourceIsTable);
     setHidden(outputTabularWrap, !targetIsTable);
     setHidden(outputCodeWrap, targetIsTable);
+    setHidden(configSection, !configVisible());
   }
 
   /**
@@ -256,7 +441,6 @@ export function initConverterApp({ root = document } = {}) {
   async function onSourceChange(next) {
     if (next === source) return;
 
-    // Capture current model from outgoing source before switching
     try {
       if (source === "tabular") {
         model = normalizeTable(inputTabular?.getData() ?? model);
@@ -269,7 +453,6 @@ export function initConverterApp({ root = document } = {}) {
       clearError();
     } catch (err) {
       showError(err instanceof Error ? err.message : String(err));
-      // Revert segmented control
       syncing = true;
       sourceControl?.selectValue(source, { emit: false });
       syncing = false;
@@ -284,8 +467,10 @@ export function initConverterApp({ root = document } = {}) {
       syncing = false;
     }
 
+    syncTypeConfigFromModel();
     updateDialectVisibility();
     updatePaneVisibility();
+    renderConfigUi();
 
     syncing = true;
     try {
@@ -311,12 +496,12 @@ export function initConverterApp({ root = document } = {}) {
   async function onTargetChange(next) {
     if (next === target) return;
 
+    const previousTarget = target;
     target = next;
     if (target === source) {
       source = fallbackLang(target);
       syncing = true;
       sourceControl?.selectValue(source, { emit: false });
-      // Refresh input pane for new source from current model
       try {
         if (source === "tabular") {
           inputTabular?.setData(model, { emitEvent: false });
@@ -331,8 +516,18 @@ export function initConverterApp({ root = document } = {}) {
       syncing = false;
     }
 
+    const from =
+      previousTarget === "dax" || previousTarget === "m" ? previousTarget : null;
+    const to = target === "dax" || target === "m" ? target : null;
+    if (from && to && from !== to) {
+      syncTypeConfigFromModel({ remappingLang: { from, to } });
+    } else {
+      syncTypeConfigFromModel();
+    }
+
     updateDialectVisibility();
     updatePaneVisibility();
+    renderConfigUi();
     await runConvert();
   }
 
@@ -342,6 +537,7 @@ export function initConverterApp({ root = document } = {}) {
     try {
       if (source === "tabular") {
         model = normalizeTable(inputTabular?.getData() ?? model);
+        syncTypeConfigFromModel();
       } else if (source === "dax" || source === "m") {
         const text = inputCode?.getSource() ?? "";
         if (!text.trim()) {
@@ -357,12 +553,15 @@ export function initConverterApp({ root = document } = {}) {
         outputTable = renderOutputTable(outputTableEl, model, outputTable);
       } else if (target === "dax" || target === "m") {
         const dialect = target === "dax" ? daxDialect : mDialect;
-        const code = await generate(target, dialect, model);
+        const typed =
+          source === "tabular" ? modelWithOutputTypes(model, target) : model;
+        const code = await generate(target, dialect, typed);
         if (gen !== convertGen) return;
         outputCode?.setSource(String(await code));
       }
       syncing = false;
       clearError();
+      if (source === "tabular") renderConfigUi();
     } catch (err) {
       syncing = false;
       if (gen !== convertGen) return;
@@ -370,8 +569,10 @@ export function initConverterApp({ root = document } = {}) {
     }
   }
 
+  syncTypeConfigFromModel();
   updateDialectVisibility();
   updatePaneVisibility();
+  renderConfigUi();
   void runConvert();
 
   return {

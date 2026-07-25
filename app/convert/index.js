@@ -18,6 +18,15 @@ export {
   tablesEqualByContent,
 } from "./model.js";
 
+export {
+  DAX_OUTPUT_TYPES,
+  M_OUTPUT_TYPES,
+  outputTypeOptions,
+  suggestOutputType,
+  effectiveDaxType,
+  effectiveMType,
+} from "./output-types.js";
+
 export { generateDax } from "./dax-generate.js";
 export { parseDax } from "./dax-parse.js";
 export { generateM } from "./m-generate.js";

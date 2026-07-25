@@ -52,6 +52,77 @@
   width: 100%;
 }
 
+.converter-config-hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.converter-config-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.converter-config-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(8rem, 12rem) auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.converter-config-name {
+  min-width: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.converter-config-type {
+  width: 100%;
+}
+
+.converter-config-lock {
+  font-size: 0.75rem;
+  color: var(--muted);
+  white-space: nowrap;
+  min-width: 3.5rem;
+}
+
+.converter-config-lock[data-locked="true"] {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.converter-config-empty {
+  margin: 0;
+  padding: 0.75rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+}
+
+@media (max-width: 640px) {
+  .converter-config-row {
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+  }
+
+  .converter-config-lock {
+    min-width: 0;
+  }
+}
+
 .converter-pane .code-block-body {
   min-height: 16rem;
 }
