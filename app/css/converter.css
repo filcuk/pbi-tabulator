@@ -28,7 +28,7 @@
 
 .converter-panes {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 1.25rem;
   align-items: start;
 }
@@ -58,10 +58,4 @@
 .converter-pane .code-block-editor,
 .converter-pane .code-block pre {
   min-height: 16rem;
-}
-
-@media (max-width: 900px) {
-  .converter-panes {
-    grid-template-columns: 1fr;
-  }
 }
