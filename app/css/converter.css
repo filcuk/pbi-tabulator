@@ -47,7 +47,8 @@
 }
 
 .converter-pane .code-block,
-.converter-pane .tabular-input {
+.converter-pane .tabular-input,
+.converter-pane .table-block {
   width: 100%;
 }
 

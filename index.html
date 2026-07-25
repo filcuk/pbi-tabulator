@@ -145,11 +145,19 @@
             <h2 id="output-heading">Output</h2>
             <div id="output-tabular-wrap" class="hidden" hidden>
               <div
-                class="tabular-input"
-                id="output-tabular"
-                aria-label="Output table"
-                data-tabular-input-disabled
-              ></div>
+                class="table-block table-block--wide"
+                id="output-table"
+                data-table-sortable
+              >
+                <div class="table-wrap">
+                  <table class="table table--striped table--compact" aria-label="Output table">
+                    <thead>
+                      <tr></tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
             </div>
             <div id="output-code-wrap">
               <div

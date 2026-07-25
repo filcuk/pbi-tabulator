@@ -5,6 +5,7 @@
 import { setHidden } from "./utils/dom.js";
 import { initSegmentedControl } from "./components/segmented-control.js";
 import { initTabularInput } from "./components/tabular-input.js";
+import { initTable } from "./components/table.js";
 import { initCodeBlock } from "./components/code-block.js";
 import { showBanner, hideBanner } from "./components/banner.js";
 import {
@@ -29,6 +30,92 @@ const SAMPLE = normalizeTable({
 });
 
 /**
+ * @param {string | number | boolean | null | undefined} value
+ * @param {import("./convert/model.js").ColumnType} type
+ */
+function formatOutputCell(value, type) {
+  if (value === null || value === undefined) return "";
+  if (type === "logical") return value ? "TRUE" : "FALSE";
+  return String(value);
+}
+
+/**
+ * @param {HTMLElement | null} blockEl
+ * @param {import("./convert/model.js").TableModel} table
+ * @param {ReturnType<typeof initTable> | null} previous
+ */
+function renderOutputTable(blockEl, table, previous) {
+  previous?.destroy();
+  if (!blockEl) return null;
+
+  const tableEl = blockEl.querySelector("table.table");
+  const theadRow = tableEl?.querySelector("thead tr");
+  const tbody = tableEl?.querySelector("tbody");
+  if (!tableEl || !theadRow || !tbody) return null;
+
+  theadRow.replaceChildren();
+  tbody.replaceChildren();
+
+  const { columns, rows } = table;
+  const canSort = columns.length > 0 && rows.length > 0;
+
+  if (columns.length === 0) {
+    const empty = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.colSpan = 1;
+    cell.className = "table-empty";
+    cell.textContent = "No columns";
+    empty.append(cell);
+    tbody.append(empty);
+    return initTable(blockEl, { sortable: false });
+  }
+
+  for (const col of columns) {
+    const th = document.createElement("th");
+    th.scope = "col";
+    if (col.type === "number") th.className = "table-num";
+
+    if (canSort) {
+      th.dataset.tableSort = "";
+      th.dataset.sortType = col.type === "number" ? "number" : "text";
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "table-sort-button";
+      button.textContent = col.label || col.id;
+      th.append(button);
+    } else {
+      th.textContent = col.label || col.id;
+    }
+    theadRow.append(th);
+  }
+
+  if (rows.length === 0) {
+    const empty = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.colSpan = columns.length;
+    cell.className = "table-empty";
+    cell.textContent = "No rows";
+    empty.append(cell);
+    tbody.append(empty);
+    return initTable(blockEl, { sortable: false });
+  }
+
+  for (const row of rows) {
+    const tr = document.createElement("tr");
+    if (row.id) tr.dataset.tableRowId = row.id;
+    for (const col of columns) {
+      const td = document.createElement("td");
+      if (col.type === "number") td.className = "table-num";
+      td.textContent = formatOutputCell(row.cells?.[col.id], col.type);
+      tr.append(td);
+    }
+    tbody.append(tr);
+  }
+
+  return initTable(blockEl, { sortable: true });
+}
+
+/**
  * @param {object} [options]
  * @param {ParentNode} [options.root]
  */
@@ -41,6 +128,7 @@ export function initConverterApp({ root = document } = {}) {
   const inputCodeWrap = root.querySelector("#input-code-wrap");
   const outputTabularWrap = root.querySelector("#output-tabular-wrap");
   const outputCodeWrap = root.querySelector("#output-code-wrap");
+  const outputTableEl = root.querySelector("#output-table");
 
   /** @type {import("./convert/model.js").TableModel} */
   let model = SAMPLE;
@@ -53,6 +141,8 @@ export function initConverterApp({ root = document } = {}) {
   let convertGen = 0;
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let debounceTimer;
+  /** @type {ReturnType<typeof initTable> | null} */
+  let outputTable = null;
 
   const inputTabular = initTabularInput(root.querySelector("#input-tabular"), {
     columns: model.columns,
@@ -63,12 +153,6 @@ export function initConverterApp({ root = document } = {}) {
       model = normalizeTable({ columns, rows });
       scheduleConvert();
     },
-  });
-
-  const outputTabular = initTabularInput(root.querySelector("#output-tabular"), {
-    columns: model.columns,
-    rows: model.rows,
-    disabled: true,
   });
 
   const inputCode = initCodeBlock(root.querySelector("#input-code"), {
@@ -270,8 +354,7 @@ export function initConverterApp({ root = document } = {}) {
 
       syncing = true;
       if (target === "tabular") {
-        outputTabular?.setData(model, { emitEvent: false });
-        outputTabular?.setDisabled(true);
+        outputTable = renderOutputTable(outputTableEl, model, outputTable);
       } else if (target === "dax" || target === "m") {
         const dialect = target === "dax" ? daxDialect : mDialect;
         const code = await generate(target, dialect, model);
