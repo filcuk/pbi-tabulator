@@ -337,7 +337,7 @@
   vertical-align: middle;
 }
 
-.tabular-input-add-row-tr:hover {
+.tabular-input .table tbody tr.tabular-input-add-row-tr:hover {
   background: transparent;
 }
 
