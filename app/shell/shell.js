@@ -34,28 +34,42 @@ function bindGlobalErrorHandlers(onError) {
  *
  * @param {object} [options]
  * @param {string} [options.repoUrl]
+ * @param {string} [options.appUrl] Public site URL — entries matching this are omitted from “also see”
  * @param {string} [options.brandUrl]
  * @param {string} [options.brandName]
  * @param {false | { label: string, url: string, icon?: string, iconLight?: string, iconDark?: string }[]} [options.alsoSee]
- *   Related-app links for the footer “also see” menu. `false` or `[]` hides it.
+ *   Related-app links for the footer “also see” menu. `false` or `[]` hides it
+ *   when there is no remote list.
+ * @param {string} [options.alsoSeeUrl] Remote JSON URL (array of link objects). Empty skips fetch.
  * @param {string} [options.appVersion] Override app SemVer (default from `app/version.js`)
  * @param {string} [options.templateVersion] Override template SemVer (default from `app/version.js`)
- * @param {import("./page-nav.js").PageNavOptions} [options.pageNav] Passed to `initPageNavPanel()`
+ * @param {false | import("./page-nav.js").PageNavOptions} [options.pageNav]
+ *   Page nav options, or `false` to omit floating nav / jump buttons.
  * @param {boolean} [options.showErrors=true] Show `.banner[data-app-error]` on uncaught errors
  * @param {(detail: object) => void} [options.onError] Called before the error banner is shown
  */
 export function initShell(options = {}) {
-  const { pageNav, showErrors = true, onError, ...shellOptions } = options;
-  renderPageShell(shellOptions);
+  const {
+    pageNav,
+    showErrors = true,
+    onError,
+    alsoSeeUrl,
+    alsoSee,
+    appUrl,
+    ...shellOptions
+  } = options;
+  renderPageShell({ ...shellOptions, alsoSee, alsoSeeUrl, appUrl, pageNav });
   initIcons();
   initExternalLinks(document);
   initHeadingLinks(document);
-  initAlsoSee(document);
+  void initAlsoSee(document, { alsoSeeUrl, appUrl });
   initTheme();
   initThemeToggle(document.getElementById("theme-toggle"));
   initStickyChrome();
   initTooltips(document);
-  initPageNavPanel("#page-nav", pageNav);
+  if (pageNav !== false) {
+    initPageNavPanel("#page-nav", pageNav === true ? undefined : pageNav);
+  }
 
   if (showErrors && document.querySelector(".banner[data-app-error]")) {
     bindGlobalErrorHandlers(onError);

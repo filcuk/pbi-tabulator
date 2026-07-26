@@ -3,10 +3,15 @@
  */
 
 import { setHidden } from "./utils/dom.js";
+import { onDocumentEscape } from "./utils/document-listeners.js";
 import { initSegmentedControl } from "./components/segmented-control.js";
-import { initTabularInput } from "./components/tabular-input.js";
+import {
+  formatClipboardTable,
+  initTabularInput,
+} from "./components/tabular-input.js";
 import { initTable } from "./components/table.js";
 import { initCodeBlock } from "./components/code-block.js";
+import { initToggle } from "./components/toggle.js";
 import { showBanner, hideBanner } from "./components/banner.js";
 import {
   ConvertError,
@@ -23,15 +28,156 @@ import {
 
 const DEBOUNCE_MS = 280;
 
+/**
+ * Copy text to the clipboard (Clipboard API, with execCommand fallback).
+ * @param {string} text
+ * @returns {Promise<boolean>}
+ */
+async function copyTextToClipboard(text) {
+  if (navigator.clipboard?.writeText && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // Fall through to execCommand.
+    }
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.top = "0";
+  textarea.style.left = "0";
+  textarea.style.width = "1px";
+  textarea.style.height = "1px";
+  textarea.style.padding = "0";
+  textarea.style.border = "none";
+  textarea.style.outline = "none";
+  textarea.style.boxShadow = "none";
+  textarea.style.background = "transparent";
+  textarea.style.opacity = "0";
+  document.body.append(textarea);
+  textarea.focus();
+  textarea.select();
+  textarea.setSelectionRange(0, textarea.value.length);
+
+  let ok = false;
+  try {
+    ok = document.execCommand("copy");
+  } catch {
+    ok = false;
+  }
+  textarea.remove();
+  return ok;
+}
+
+/**
+ * Read plain text from the clipboard (Clipboard API).
+ * Returns `null` when unavailable or denied.
+ * @returns {Promise<string | null>}
+ */
+async function readTextFromClipboard() {
+  if (!window.isSecureContext || !navigator.clipboard) return null;
+
+  if (typeof navigator.clipboard.readText === "function") {
+    try {
+      return await navigator.clipboard.readText();
+    } catch {
+      // NotAllowedError / permission — try read() or paste-event fallback.
+    }
+  }
+
+  if (typeof navigator.clipboard.read === "function") {
+    try {
+      const items = await navigator.clipboard.read();
+      for (const item of items) {
+        if (!item.types.includes("text/plain")) continue;
+        const blob = await item.getType("text/plain");
+        return await blob.text();
+      }
+      return "";
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Flash a temporary label on a pane action button.
+ * @param {HTMLButtonElement | null} button
+ * @param {string} text
+ * @param {string} restore
+ * @param {{ current: ReturnType<typeof setTimeout> | null }} timerRef
+ */
+function flashActionLabel(button, text, restore, timerRef) {
+  if (!button) return;
+  const labelEl = button.querySelector(".converter-pane-action-label");
+  if (timerRef.current !== null) {
+    clearTimeout(timerRef.current);
+    timerRef.current = null;
+  }
+  if (labelEl) labelEl.textContent = text;
+  else button.textContent = text;
+  timerRef.current = setTimeout(() => {
+    timerRef.current = null;
+    if (labelEl) labelEl.textContent = restore;
+    else button.textContent = restore;
+  }, 1500);
+}
+
+/**
+ * Prism language id for a converter lang (`dax` | `m`).
+ * @param {string} lang
+ * @returns {string | null}
+ */
+function prismLanguage(lang) {
+  if (lang === "dax") return "dax";
+  if (lang === "m") return "powerquery";
+  return null;
+}
+
 const SAMPLE = normalizeTable({
   columns: [
     { id: "name", label: "Name", type: "text" },
-    { id: "age", label: "Age", type: "number" },
+    { id: "qty", label: "Qty", type: "number" },
+    { id: "rate", label: "Rate", type: "number" },
     { id: "active", label: "Active", type: "logical" },
+    { id: "amount", label: "Amount", type: "number" },
+    { id: "day", label: "Day", type: "text" },
+    { id: "updated", label: "Updated", type: "text" },
+    { id: "at", label: "At", type: "text" },
+    { id: "span", label: "Span", type: "text" },
   ],
   rows: [
-    { cells: { name: "Alice", age: 30, active: true } },
-    { cells: { name: "Bob", age: 25, active: false } },
+    {
+      cells: {
+        name: "Alice",
+        qty: 30,
+        rate: 1.5,
+        active: true,
+        amount: 19.99,
+        day: "2024-06-01",
+        updated: "2024-06-01 14:30:00",
+        at: "14:30:00",
+        span: "P1DT2H",
+      },
+    },
+    {
+      cells: {
+        name: "Bob",
+        qty: 25,
+        rate: 2.75,
+        active: false,
+        amount: 9.5,
+        day: "2025-01-15",
+        updated: "2025-01-15 09:00:00",
+        at: "09:00:00",
+        span: "PT30M",
+      },
+    },
   ],
 });
 
@@ -140,6 +286,7 @@ export function initConverterApp({ root = document } = {}) {
   const outputCodeWrap = root.querySelector("#output-code-wrap");
   const outputTableEl = root.querySelector("#output-table");
   const configSection = root.querySelector("#config-section");
+  const configHint = root.querySelector(".converter-config-hint");
   const configColumnsEl = root.querySelector("#config-columns");
 
   /** @type {import("./convert/model.js").TableModel} */
@@ -149,6 +296,9 @@ export function initConverterApp({ root = document } = {}) {
   let target = "dax";
   let daxDialect = "datatable";
   let mDialect = "table";
+  let alignCommas = false;
+  let minimised = false;
+  let commaFirst = false;
   let syncing = false;
   let convertGen = 0;
   /** @type {ReturnType<typeof setTimeout> | undefined} */
@@ -174,14 +324,136 @@ export function initConverterApp({ root = document } = {}) {
 
   const inputCode = initCodeBlock(root.querySelector("#input-code"), {
     mode: "edit",
-    highlight: false,
-    lineNumbers: false,
   });
 
   const outputCode = initCodeBlock(root.querySelector("#output-code"), {
     mode: "select",
-    highlight: false,
-    lineNumbers: false,
+  });
+
+  const inputCodeClearBtn = root.querySelector("#input-code-clear");
+  const inputCodeCopyBtn = root.querySelector("#input-code-copy");
+  const inputCodePasteBtn = root.querySelector("#input-code-paste");
+  const outputTabularCopyBtn = root.querySelector("#output-tabular-copy");
+  const outputCodeCopyBtn = root.querySelector("#output-code-copy");
+
+  /** @type {{ current: ReturnType<typeof setTimeout> | null }} */
+  const inputCopyFlash = { current: null };
+  /** @type {{ current: ReturnType<typeof setTimeout> | null }} */
+  const inputPasteFlash = { current: null };
+  /** @type {{ current: ReturnType<typeof setTimeout> | null }} */
+  const outputTabularCopyFlash = { current: null };
+  /** @type {{ current: ReturnType<typeof setTimeout> | null }} */
+  const outputCodeCopyFlash = { current: null };
+
+  /** @type {{ cleanup: () => void, resolve: (text: string | null) => void } | null} */
+  let pasteCaptureSession = null;
+
+  function endPasteCapture(text) {
+    const session = pasteCaptureSession;
+    if (!session) return;
+    pasteCaptureSession = null;
+    session.cleanup();
+    session.resolve(text);
+  }
+
+  /**
+   * When Clipboard API read is blocked, arm a one-shot document paste listener.
+   * @param {HTMLButtonElement} button
+   * @returns {Promise<string | null>}
+   */
+  function waitForPasteViaShortcut(button) {
+    endPasteCapture(null);
+
+    return new Promise((resolve) => {
+      const labelEl = button.querySelector(".converter-pane-action-label");
+      const previous = labelEl?.textContent ?? "Paste";
+      if (labelEl) labelEl.textContent = "Ctrl+V";
+      button.setAttribute("aria-label", "Press Control V to paste");
+
+      /** @param {ClipboardEvent} event */
+      function onPaste(event) {
+        const next = event.clipboardData?.getData("text/plain") ?? "";
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        endPasteCapture(next);
+      }
+
+      const removeEscape = onDocumentEscape(() => {
+        endPasteCapture(null);
+        return true;
+      }, { priority: 60 });
+
+      const timer = setTimeout(() => {
+        endPasteCapture(null);
+      }, 15000);
+
+      function cleanup() {
+        clearTimeout(timer);
+        document.removeEventListener("paste", onPaste, true);
+        removeEscape();
+        if (labelEl) labelEl.textContent = previous;
+        button.setAttribute("aria-label", "Paste source code");
+      }
+
+      pasteCaptureSession = { cleanup, resolve };
+      document.addEventListener("paste", onPaste, true);
+    });
+  }
+
+  inputCodeClearBtn?.addEventListener("click", () => {
+    inputCode?.setSource("");
+    scheduleConvert();
+  });
+
+  inputCodeCopyBtn?.addEventListener("click", async () => {
+    const text = inputCode?.getSource() ?? "";
+    const ok = await copyTextToClipboard(text);
+    flashActionLabel(
+      inputCodeCopyBtn,
+      ok ? "Copied" : "Failed",
+      "Copy",
+      inputCopyFlash
+    );
+  });
+
+  inputCodePasteBtn?.addEventListener("click", async () => {
+    if (pasteCaptureSession) {
+      endPasteCapture(null);
+      return;
+    }
+
+    const readPromise = readTextFromClipboard();
+    let text = await readPromise;
+    if (text === null) {
+      text = await waitForPasteViaShortcut(inputCodePasteBtn);
+      if (text === null) return;
+    }
+
+    inputCode?.setSource(text);
+    flashActionLabel(inputCodePasteBtn, "Pasted", "Paste", inputPasteFlash);
+    scheduleConvert();
+  });
+
+  outputTabularCopyBtn?.addEventListener("click", async () => {
+    const text = formatClipboardTable(model.columns, model.rows);
+    const ok = await copyTextToClipboard(text);
+    flashActionLabel(
+      outputTabularCopyBtn,
+      ok ? "Copied" : "Failed",
+      "Copy",
+      outputTabularCopyFlash
+    );
+  });
+
+  outputCodeCopyBtn?.addEventListener("click", async () => {
+    const text = outputCode?.getSource() ?? "";
+    const ok = await copyTextToClipboard(text);
+    flashActionLabel(
+      outputCodeCopyBtn,
+      ok ? "Copied" : "Failed",
+      "Copy",
+      outputCodeCopyFlash
+    );
   });
 
   const sourceControl = initSegmentedControl(root.querySelector("#source-control"), {
@@ -214,9 +486,43 @@ export function initConverterApp({ root = document } = {}) {
     onChange({ value, source: changeSource }) {
       if (changeSource === "init") return;
       mDialect = value;
+      updatePaneVisibility();
+      renderConfigUi();
       void runConvert();
     },
   });
+
+  initToggle(root.querySelector("#align-commas-toggle"), {
+    defaultChecked: false,
+    onChange({ checked, source: changeSource }) {
+      if (changeSource === "init") return;
+      alignCommas = checked;
+      void runConvert();
+    },
+  });
+
+  initToggle(root.querySelector("#minimised-output-toggle"), {
+    defaultChecked: false,
+    onChange({ checked, source: changeSource }) {
+      if (changeSource === "init") return;
+      minimised = checked;
+      void runConvert();
+    },
+  });
+
+  initToggle(root.querySelector("#comma-first-toggle"), {
+    defaultChecked: false,
+    onChange({ checked, source: changeSource }) {
+      if (changeSource === "init") return;
+      commaFirst = checked;
+      void runConvert();
+    },
+  });
+
+  /** @returns {{ alignCommas: boolean, minimised: boolean, commaFirst: boolean }} */
+  function generateOptions() {
+    return { alignCommas, minimised, commaFirst };
+  }
 
   root.querySelector("#input-code")?.addEventListener(
     "input",
@@ -253,6 +559,14 @@ export function initConverterApp({ root = document } = {}) {
 
   function configVisible() {
     return configLang() !== null;
+  }
+
+  /** Column output types apply to DAX and typed M dialects (#table / Binary.FromText), not FromRecords. */
+  function typesConfigVisible() {
+    const lang = configLang();
+    if (!lang) return false;
+    if (lang === "m" && mDialect === "from-records") return false;
+    return true;
   }
 
   /**
@@ -333,7 +647,7 @@ export function initConverterApp({ root = document } = {}) {
     if (!configColumnsEl) return;
 
     const lang = configLang();
-    if (!lang) {
+    if (!lang || !typesConfigVisible()) {
       configColumnsEl.replaceChildren();
       return;
     }
@@ -357,14 +671,47 @@ export function initConverterApp({ root = document } = {}) {
       };
       if (!typeConfig.has(col.id)) typeConfig.set(col.id, cfg);
 
-      const row = document.createElement("div");
-      row.className = "converter-config-row";
-      row.setAttribute("role", "listitem");
+      const cell = document.createElement("div");
+      cell.className = "converter-config-cell";
+      cell.setAttribute("role", "listitem");
+
+      const head = document.createElement("div");
+      head.className = "converter-config-cell-head";
 
       const name = document.createElement("span");
       name.className = "converter-config-name";
       name.textContent = col.label || col.id;
       name.title = col.label || col.id;
+
+      const lock = document.createElement(cfg.locked ? "button" : "span");
+      lock.className = "converter-config-lock";
+      lock.dataset.locked = cfg.locked ? "true" : "false";
+      lock.textContent = cfg.locked ? "Locked" : "Auto";
+
+      if (cfg.locked) {
+        lock.type = "button";
+        lock.dataset.tooltip = "Click for auto-detect";
+        lock.dataset.tooltipPosition = "top";
+        lock.setAttribute(
+          "aria-label",
+          `Unlock output type for ${col.label || col.id}`
+        );
+        lock.addEventListener("click", () => {
+          const suggested = suggestOutputType(
+            lang,
+            col.type,
+            columnValues(col)
+          );
+          typeConfig.set(col.id, {
+            outputType: suggested,
+            locked: false,
+          });
+          renderConfigUi();
+          void runConvert();
+        });
+      }
+
+      head.append(name, lock);
 
       const select = document.createElement("select");
       select.className = "input converter-config-type";
@@ -399,13 +746,8 @@ export function initConverterApp({ root = document } = {}) {
         void runConvert();
       });
 
-      const lock = document.createElement("span");
-      lock.className = "converter-config-lock";
-      lock.dataset.locked = cfg.locked ? "true" : "false";
-      lock.textContent = cfg.locked ? "Locked" : "Auto";
-
-      row.append(name, select, lock);
-      frag.append(row);
+      cell.append(head, select);
+      frag.append(cell);
     }
 
     configColumnsEl.replaceChildren(frag);
@@ -419,11 +761,23 @@ export function initConverterApp({ root = document } = {}) {
   function updatePaneVisibility() {
     const sourceIsTable = source === "tabular";
     const targetIsTable = target === "tabular";
+    const showTypes = typesConfigVisible();
     setHidden(inputTabularWrap, !sourceIsTable);
     setHidden(inputCodeWrap, sourceIsTable);
     setHidden(outputTabularWrap, !targetIsTable);
     setHidden(outputCodeWrap, targetIsTable);
     setHidden(configSection, !configVisible());
+    setHidden(configColumnsEl, !showTypes);
+    if (configHint) {
+      configHint.textContent = showTypes
+        ? "Configure output style and column types."
+        : "Configure output style.";
+    }
+
+    const inputLang = prismLanguage(source);
+    if (inputLang) inputCode?.setLanguage(inputLang);
+    const outputLang = prismLanguage(target);
+    if (outputLang) outputCode?.setLanguage(outputLang);
   }
 
   /**
@@ -450,15 +804,11 @@ export function initConverterApp({ root = document } = {}) {
           model = normalizeTable(await parse(source, text));
         }
       }
-      clearError();
-    } catch (err) {
-      showError(err instanceof Error ? err.message : String(err));
-      syncing = true;
-      sourceControl?.selectValue(source, { emit: false });
-      syncing = false;
-      return;
+    } catch {
+      // Keep the last good model so the user can leave invalid code.
     }
 
+    clearError();
     source = next;
     if (source === target) {
       target = fallbackLang(source);
@@ -478,7 +828,7 @@ export function initConverterApp({ root = document } = {}) {
         inputTabular?.setData(model, { emitEvent: false });
       } else {
         const dialect = source === "dax" ? daxDialect : mDialect;
-        const code = await generate(source, dialect, model);
+        const code = await generate(source, dialect, model, generateOptions());
         inputCode?.setSource(String(await code));
       }
     } catch (err) {
@@ -507,7 +857,7 @@ export function initConverterApp({ root = document } = {}) {
           inputTabular?.setData(model, { emitEvent: false });
         } else {
           const dialect = source === "dax" ? daxDialect : mDialect;
-          const code = await generate(source, dialect, model);
+          const code = await generate(source, dialect, model, generateOptions());
           inputCode?.setSource(String(await code));
         }
       } catch (err) {
@@ -554,8 +904,10 @@ export function initConverterApp({ root = document } = {}) {
       } else if (target === "dax" || target === "m") {
         const dialect = target === "dax" ? daxDialect : mDialect;
         const typed =
-          source === "tabular" ? modelWithOutputTypes(model, target) : model;
-        const code = await generate(target, dialect, typed);
+          source === "tabular" && typesConfigVisible()
+            ? modelWithOutputTypes(model, target)
+            : model;
+        const code = await generate(target, dialect, typed, generateOptions());
         if (gen !== convertGen) return;
         outputCode?.setSource(String(await code));
       }
@@ -570,6 +922,10 @@ export function initConverterApp({ root = document } = {}) {
   }
 
   syncTypeConfigFromModel();
+  // CURRENCY is not auto-detected; lock Amount in the starter sample for DAX.
+  if (configLang() === "dax" && typeConfig.has("amount")) {
+    typeConfig.set("amount", { outputType: "CURRENCY", locked: true });
+  }
   updateDialectVisibility();
   updatePaneVisibility();
   renderConfigUi();

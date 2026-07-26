@@ -5,7 +5,7 @@ Convert between an editable table, DAX dynamic tables, and Power Query M — a s
 ## Features
 
 - **Source / target switches** — Tabular, DAX, or M on each side (same language on both sides is not allowed)
-- **Tabular input** — typed columns (text, number, logical), paste from Excel/TSV
+- **Tabular input** — typed columns (text, number, logical), paste from Excel/TSV (in-place or replace whole table)
 - **DAX dialects** — `DATATABLE()`, table constructor via `SELECTCOLUMNS` + `{}`, and `UNION` / `ROW`
 - **M dialects** — `#table`, `Table.FromRecords`, and Enter Data–style `Binary.FromText` + `Binary.Decompress`
 

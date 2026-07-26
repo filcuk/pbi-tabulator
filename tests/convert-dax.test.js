@@ -11,13 +11,34 @@ import { parseDax } from "../app/convert/dax-parse.js";
 
 const sample = normalizeTable({
   columns: [
-    { id: "name", label: "Name", type: "text" },
-    { id: "age", label: "Age", type: "number" },
-    { id: "active", label: "Active", type: "logical" },
+    { id: "name", label: "Name", type: "text", outputType: "STRING" },
+    { id: "qty", label: "Qty", type: "number", outputType: "INTEGER" },
+    { id: "rate", label: "Rate", type: "number", outputType: "DOUBLE" },
+    { id: "active", label: "Active", type: "logical", outputType: "BOOLEAN" },
+    { id: "amount", label: "Amount", type: "number", outputType: "CURRENCY" },
+    { id: "updated", label: "Updated", type: "text", outputType: "DATETIME" },
   ],
   rows: [
-    { cells: { name: "Alice", age: 30, active: true } },
-    { cells: { name: "Bob", age: 25, active: false } },
+    {
+      cells: {
+        name: "Alice",
+        qty: 30,
+        rate: 1.5,
+        active: true,
+        amount: 19.99,
+        updated: "2024-06-01 14:30:00",
+      },
+    },
+    {
+      cells: {
+        name: "Bob",
+        qty: 25,
+        rate: 2.75,
+        active: false,
+        amount: 9.5,
+        updated: "2025-01-15 09:00:00",
+      },
+    },
   ],
 });
 

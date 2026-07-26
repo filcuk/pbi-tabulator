@@ -39,10 +39,12 @@ Optional shell overrides (repo link, brand URL, related apps, page nav scan):
 ```javascript
 initShell({
   repoUrl: "https://github.com/you/your-app",
+  appUrl: "https://you.github.io/your-app/",
   brandUrl: "https://yoursite.example",
   brandName: "Your name",
-  alsoSee: false, // or [] — hide the footer “also see” menu
-  pageNav: { headingSelector: "main h2[id]" },
+  alsoSee: false, // or [] — hide the footer “also see” menu when no remote list
+  alsoSeeUrl: "", // optional remote JSON (array of link objects)
+  pageNav: false, // omit floating page nav / jump buttons
 });
 ```
 
@@ -75,11 +77,14 @@ Fork-sensitive defaults live in [`app/config.js`](app/config.js):
 ```javascript
 export const APP_CONFIG = {
   repoUrl: "https://github.com/you/your-app",
+  appUrl: "https://you.github.io/your-app/", // public Pages URL — omitted from “also see”
   brandUrl: "https://yoursite.example",
   brandName: "Your name",
   themeStorageKey: "microapp-theme",
   themeChangeEvent: "microapp-theme-change",
-  // Related apps in the footer “also see” menu — set to [] or false to hide
+  // Remote JSON for footer “also see” — empty skips fetch; falls back to alsoSee
+  alsoSeeUrl: "", // e.g. "https://raw.githubusercontent.com/you/shared/main/also-see.json"
+  // Local related apps (used when alsoSeeUrl is empty or fetch fails)
   alsoSee: [
     {
       label: "Example App A",
@@ -95,7 +100,9 @@ export const APP_CONFIG = {
 | Field | Used by |
 | ----- | ------- |
 | `repoUrl`, `brandUrl`, `brandName` | Footer links and brand tooltip via `renderPageShell()` |
-| `alsoSee` | Footer “also see” dropdown (`[]` / `false` disables) |
+| `appUrl` | Public site URL; matching entries are dropped from “also see” |
+| `alsoSeeUrl` | Optional remote JSON for footer “also see” (top-level array); empty skips fetch |
+| `alsoSee` | Local footer “also see” links (`[]` / `false` disables when there is no remote list) |
 | `themeStorageKey` | `theme.js` and blocking `theme-init.js` |
 | `themeChangeEvent` | Theme changes; rich text editor syncs to dark mode |
 
@@ -263,7 +270,7 @@ Component CSS lives under `app/css/` (imported via `styles.css`). Match a compon
 | -------- | ----------- |
 | **Design tokens** | CSS custom properties in [`app/tokens.css`](app/tokens.css) for background, surface, section panels, `--input-bg` (form fields — lighter than page/section chrome), `--table-header-bg`, `--control-height` (single-line controls), text, borders, accent, banners, and code blocks. Light and dark values via `[data-theme="dark"]`. Component styles in [`app/css/`](app/css/) partials (imported by [`app/styles.css`](app/styles.css)). |
 | **Theme toggle** | Footer control (injected by `initShell()`): light, dark, or system (`auto`). Stored in `localStorage` under `microapp-theme`. `app/theme-init.js` runs in `<head>` to avoid flash of wrong theme. |
-| **Layout shell** | Semantic `header` / `main` / `footer` (footer rendered by JS), max-width 1200px, flex column page. App version in footer; template version on hover. Optional footer **also see** dropdown for related apps (`APP_CONFIG.alsoSee` or `initShell({ alsoSee })`; `[]` / `false` disables). Optional sticky site header (`data-sticky-header`) and sticky section headings (`data-sticky-section-headings`) — see **Sticky chrome**. |
+| **Layout shell** | Semantic `header` / `main` / `footer` (footer rendered by JS), max-width 1200px, flex column page. App version in footer; template version on hover. Optional footer **also see** dropdown for related apps (`APP_CONFIG.alsoSee` / `alsoSeeUrl`, or `initShell({ alsoSee, alsoSeeUrl })`; `[]` / `false` disables when there is no remote list). Optional sticky site header (`data-sticky-header`) and sticky section headings (`data-sticky-section-headings`) — see **Sticky chrome**. |
 | **Buttons** | `.btn` (default), `.btn-primary`, `.btn-danger` (destructive primary), `.btn-icon`, `.btn-toggle` (`aria-pressed` — accent border when on), `.btn-link`, disabled state. |
 | **Badge** | Corner indicator on a control or text: normal readout or small `.badge--sm` dot. [`app/components/badge.js`](app/components/badge.js). |
 | **Chips** | Selectable filter tags and removable input chips. [`app/components/chip.js`](app/components/chip.js). |
@@ -289,8 +296,8 @@ Component CSS lives under `app/css/` (imported via `styles.css`). Match a compon
 | **Tabs** | `.tabs` block with `.tabs-list` / `.tabs-tab` and `.tabs-panel` content; behaviour from [`app/tabs.js`](app/tabs.js). |
 | **Pagination** | In-page page navigation with prev/next and numbered pages; no URL change. [`app/pagination.js`](app/pagination.js). |
 | **Table** | Data table with striped layout, sortable columns, and optional row selection. [`app/table.js`](app/table.js). |
-| **Tabular input** | Editable typed grid (text / number / logical); add/remove/reset; Excel/TSV paste with type detection. [`app/components/tabular-input.js`](app/components/tabular-input.js). |
-| **Page navigation** | Fixed `#page-nav`: always-visible jump up/down (shared progress ring), section links on hover. Group nested headings under `data-page-nav-tier` parents. [`app/page-nav.js`](app/page-nav.js). |
+| **Tabular input** | Editable typed grid (text / number / logical); add/remove/reset; Excel/TSV paste (in-place or replace via footer buttons) with type detection; centered canvas breakout when wide. [`app/components/tabular-input.js`](app/components/tabular-input.js). |
+| **Page navigation** | Fixed `#page-nav`: always-visible jump up/down (shared progress ring), section links on hover. Group nested headings under `data-page-nav-tier` parents. Disable with `initShell({ pageNav: false })`. [`app/page-nav.js`](app/page-nav.js). |
 | **Dialogs** | Accessible modal: backdrop, focus trap, Escape, focus restore. Markup uses `.modal` / `.modal-panel`; behaviour from [`app/dialog.js`](app/dialog.js). |
 | **Heading links** | Hover a `main h2[id]` heading to reveal a link icon; tooltip says “Get link”, then “Copied!” on success. [`app/heading-link.js`](app/heading-link.js). |
 | **External links** | Outgoing `http(s)` links get an arrow-outward icon via `initShell()` / [`app/external-link.js`](app/external-link.js). Opt out with `data-no-external-icon`. |
@@ -420,9 +427,11 @@ Enabled by `initShell()`. Any `http(s)` link to another origin gets an arrow-out
 
 ### Also see (related apps)
 
-Footer control between the GitHub and profile links. Configure in [`app/config.js`](app/config.js) (or pass `alsoSee` to `initShell()` / `renderPageShell()`):
+Footer control between the GitHub and profile links. Configure in [`app/config.js`](app/config.js) (or pass `alsoSee` / `alsoSeeUrl` to `initShell()` / `renderPageShell()`):
 
 ```javascript
+alsoSeeUrl: "https://raw.githubusercontent.com/you/shared/main/also-see.json", // optional
+appUrl: "https://you.github.io/your-app/", // omit this site from the menu
 alsoSee: [
   {
     label: "Example App A",
@@ -431,15 +440,17 @@ alsoSee: [
     iconLight: "app/res/app-light.svg", // optional; falls back to `icon`
     iconDark: "app/res/app-dark.svg",
   },
-]
+],
 ```
 
 | Value | Behaviour |
 | ----- | --------- |
-| Array of links | Renders “also see” with a dropdown of those links |
-| `[]` or `false` | Hides the control |
+| `alsoSeeUrl` string | Fetches remote JSON (top-level array of link objects) and replaces the menu |
+| Local `alsoSee` array | Renders immediately; kept as fallback if the remote fetch fails or `alsoSeeUrl` is empty |
+| `appUrl` | Any entry whose `url` matches (trailing slash / case ignored) is excluded |
+| `alsoSee: []` or `false` | Hides the control when there is no successful remote list |
 
-Each item opens in a new tab. Optional `subtitle` shows muted context under the label (same `.dropdown-menu-item-subtitle` pattern as dropdowns). Icons use the same light/dark swap as the site logo (`brand-icon--light` / `brand-icon--dark`). A single `icon` path can replace both `iconLight` and `iconDark`.
+Remote JSON shape matches each `alsoSee` entry (and may include this app — `appUrl` filters it out). Prefer a `raw.githubusercontent.com` or GitHub Pages URL and a simple `GET` (no custom headers). Each item opens in a new tab. Optional `subtitle` shows muted context under the label (same `.dropdown-menu-item-subtitle` pattern as dropdowns). Icons use the same light/dark swap as the site logo (`brand-icon--light` / `brand-icon--dark`). A single `icon` path can replace both `iconLight` and `iconDark`. Icon values may be local paths (`app/res/…`) or absolute URLs (e.g. another GitHub Pages site or a raw asset URL).
 
 ### Heading links
 
@@ -1638,9 +1649,18 @@ Editable data grid for collecting rows of typed values. Mount an empty `.tabular
 - Rename columns by clicking the header label (pointer cursor + “Click to edit” tooltip; Enter to commit, Escape to cancel); resting headers look like normal table headers until edited.
 - Column menu (chevron on the right of the name): **Type** group (text / number / logical; values are coerced) and **Column** group with **Remove**, **Add before**, and **Add after**. Only one column menu open at a time. Menus use fixed positioning so they are not clipped by the table scroll container.
 - Icon-only **add row** / **add column** (`plus`); **row remove** shares the trailing column with **add column** (header = add column, body = remove row).
+- **Copy** (beside Fit/Overflow) copies the grid as Excel-friendly TSV (header + rows) for paste into spreadsheets.
+- **Paste** replaces the whole grid from the clipboard, sized exactly to the clipboard (columns labeled `Column 1`…`N`; types auto-detected).
+- **Paste with Headers** same as Paste, but the first clipboard row becomes column labels and the remaining rows are data.
 - Leading column: header **reset** (`delete`); body rows get a square **up/down split** control to shift the row (`chevron-up` / `chevron-down`). First/last row disables the blocked direction.
 - Header **reset** opens a size-picker popover next to the button (up to **8×8**); choosing a size replaces the table with a blank text-column grid. Programmatic `reset({ columnCount, rowCount })` skips the picker (defaults to **3×2**).
 - Icon chrome uses `data-tooltip` (add/remove row, add column, reset, column menu trigger). Requires `initTooltips()` via `initShell()`.
+
+**Width / canvas breakout**
+
+- When the grid is wider than the page body, it **breaks out centered** up to the canvas (`100vw` minus page padding) instead of scrolling inside the body.
+- A **Fit** / **Overflow** toggle (`fullscreen` / `fullscreen-exit`) sits beside **add row** and appears **only while overflowing**; use it to constrain back to the body (horizontal scroll) or expand again. Tooltips stay “Fit to page width” / “Expand to canvas width”. Default is breakout on.
+- Opt out via `breakout: false` or `data-tabular-input-breakout="false"` (initial preference). `setBreakoutEnabled(boolean)` / `getBreakoutEnabled()` are also available.
 
 **Paste**
 
@@ -1648,6 +1668,7 @@ Editable data grid for collecting rows of typed values. Mount an empty `.tabular
 - Starts at the focused body cell (else top-left); expands rows/columns as needed; overwrites that rectangle; keeps surplus cells outside it.
 - Re-detects each column’s type from its full values (number → logical → text), then coerces cells.
 - Plain single-cell paste without tabs/newlines still goes into the focused field as usual.
+- Footer **Paste** / **Paste with Headers** read the clipboard (secure context) and replace the entire grid; empty header cells fall back to `Column N`; a headers-only clipboard yields one blank data row. If clipboard read is blocked, the button prompts for **Ctrl+V** and captures the next paste.
 
 **Keyboard**
 
@@ -1686,18 +1707,20 @@ grid?.reset(); // blank 3×2; no size picker
 grid?.reset({ columnCount: 4, rowCount: 5 });
 grid?.setData({ columns: [...], rows: [...] });
 grid?.setDisabled(true);
+grid?.setBreakoutEnabled(false);
+grid?.getBreakoutEnabled();
 grid?.destroy();
 
 initTabularInputs(document); // all `.tabular-input` roots
 ```
 
-`data-tabular-input-disabled` mirrors the `disabled` option. `onChange` `source` values include `"input"`, `"add-row"`, `"remove-row"`, `"move-row"`, `"add-column"`, `"remove-column"`, `"rename"`, `"type-change"`, `"paste"`, `"reset"`, and `"api"`.
+`data-tabular-input-disabled` mirrors the `disabled` option. `data-tabular-input-breakout` mirrors the `breakout` option (default on). `onChange` `source` values include `"input"`, `"add-row"`, `"remove-row"`, `"move-row"`, `"add-column"`, `"remove-column"`, `"rename"`, `"type-change"`, `"paste"`, `"reset"`, and `"api"`.
 
-Icons used: `plus`, `delete` (reset), `remove` (row/column), `type-text`, `type-number`, `type-logical`, `chevron-down` — defined in [`app/utils/icons.js`](app/utils/icons.js).
+Icons used: `plus`, `delete` (reset), `remove` (row/column), `type-text`, `type-number`, `type-logical`, `chevron-down`, `fullscreen`, `fullscreen-exit`, `copy`, `paste`, `paste-special` — defined in [`app/utils/icons.js`](app/utils/icons.js).
 
 ### Page navigation
 
-Injected by `initShell()` via [`app/shell/render-shell.js`](app/shell/render-shell.js). Collects `main h2[id]` headings automatically and shows plain section-title links (same weight and colour as `.section-heading`). Give each section heading a unique `id` and optional `.section-heading` class (`scroll-margin-top` is included).
+Injected by `initShell()` via [`app/shell/render-shell.js`](app/shell/render-shell.js). Collects `main h2[id]` headings automatically and shows plain section-title links (same weight and colour as `.section-heading`). Give each section heading a unique `id` and optional `.section-heading` class (`scroll-margin-top` is included). Pass `pageNav: false` to omit the floating nav and jump buttons.
 
 ```javascript
 import { initShell } from "./shell/shell.js";
@@ -1802,6 +1825,8 @@ Optional syntax highlighting for docs or demos. See [`demo.html`](demo.html) for
 <link rel="stylesheet" href="app/prism.css" />
 <script defer src="app/vendor/prism/prism.min.js"></script>
 <script defer src="app/vendor/prism/prism-python.min.js"></script>
+<script defer src="app/vendor/prism/prism-dax.min.js"></script>
+<script defer src="app/vendor/prism/prism-powerquery.min.js"></script>
 <script defer src="app/vendor/prism/prism-line-numbers.min.js"></script>
 ```
 
@@ -1828,7 +1853,9 @@ initCodeBlocks(document);
 initExpandableSurfaces(document);
 ```
 
-Set `data-code-copy="false"` on `.code-block` to disable the copy button. Line numbers require highlighting to be on.
+Set `data-code-copy="false"` on `.code-block` to disable the copy button. Line numbers require highlighting to be on. Add `.code-block--wide` to remove the default `40rem` max width.
+
+This app loads Prism **DAX** (`language-dax`) and **Power Query** (`language-powerquery`, aliases `pq` / `mscript`) for the converter panes. Switch languages at runtime via `initCodeBlock()` → `setLanguage("dax")` / `getLanguage()`.
 
 **Interaction modes** — set `data-code-mode` on `.code-block`:
 
@@ -1838,7 +1865,9 @@ Set `data-code-copy="false"` on `.code-block` to disable the copy button. Line n
 | `select` | Read-only; text selectable; copy and highlight toggles (default) |
 | `edit` | Editable overlay on highlighted `<pre>`; line numbers and highlight toggles apply |
 
-Switch modes at runtime via `initCodeBlock()` → `setMode("edit")`, `getMode()`, `getSource()`, `setSource(text)`.
+Switch modes at runtime via `initCodeBlock()` → `setMode("edit")`, `getMode()`, `getSource()`, `setSource(text)`, `getLanguage()`, `setLanguage(id)`.
+
+Add other language components under `app/vendor/prism/` as needed from [Prism](https://prismjs.com/).
 
 ### Expandable surface
 
@@ -1858,8 +1887,6 @@ import { initExpandableSurfaces } from "./components/expandable-surface.js";
 
 initExpandableSurfaces(document);
 ```
-
-Add other language components under `app/vendor/prism/` as needed from [Prism](https://prismjs.com/).
 
 ### Icons
 

@@ -22,6 +22,9 @@
  * Optional fullscreen: add `data-expandable-surface` on `.code-block` and
  * `data-expandable-surface-trigger` on `.code-block-body`; wire with
  * `initExpandableSurfaces()` from `app/expandable-surface.js`.
+ *
+ * Runtime: `setMode`, `getMode`, `getSource`, `setSource`, `getLanguage`,
+ * `setLanguage`.
  */
 
 import { setHidden } from "../utils/dom.js";
@@ -150,7 +153,7 @@ export function initCodeBlock(container, options = {}) {
     container.dataset.codeHighlight !== "false";
   let mode = parseMode(options.mode ?? container.dataset.codeMode);
 
-  const language = parseLanguage(code);
+  let language = parseLanguage(code);
   let source = normalizeSource(code.textContent);
   code.dataset.source = source;
 
@@ -241,7 +244,7 @@ export function initCodeBlock(container, options = {}) {
   }
 
   function renderHighlighted() {
-    if (!window.Prism || !language) {
+    if (!window.Prism || !language || !window.Prism.languages?.[language]) {
       renderPlain();
       return;
     }
@@ -383,6 +386,18 @@ export function initCodeBlock(container, options = {}) {
       source = next;
       code.dataset.source = next;
       if (editorEl) editorEl.value = next;
+      refreshDisplay();
+    },
+    getLanguage() {
+      return language;
+    },
+    setLanguage(nextLanguage) {
+      const next =
+        typeof nextLanguage === "string" && nextLanguage.trim()
+          ? nextLanguage.trim()
+          : null;
+      if (next === language) return;
+      language = next;
       refreshDisplay();
     },
     getMode() {

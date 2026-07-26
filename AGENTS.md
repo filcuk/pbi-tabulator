@@ -13,7 +13,7 @@ Bidirectional converter between tabular data, DAX, and Power Query M.
 | [`app/convert/index.js`](app/convert/index.js) | Facade: `parse(lang, text)`, `generate(lang, dialect, table)` |
 | [`app/components/tabular-input.js`](app/components/tabular-input.js) | Editable typed grid (canonical model shape) |
 
-Canonical table shape: `{ columns: [{ id, label, type, outputType? }], rows: [{ id, cells }] }` with types `text` | `number` | `logical`. Optional `outputType` is the exact DAX/M type used when generating (see `app/convert/output-types.js`). When source is tabular and target is DAX/M, the Configuration section lets users override per-column output types; auto-detected until manually changed (then locked).
+Canonical table shape: `{ columns: [{ id, label, type, outputType? }], rows: [{ id, cells }] }` with types `text` | `number` | `logical`. Optional `outputType` is the exact DAX/M type used when generating (see `app/convert/output-types.js`). When source is tabular and target is DAX/M, the Configuration section lets users override per-column output types; auto-detected until manually changed (then locked). Column type overrides are hidden for M `from-records` (no type clause). **Align output** (default off) pads fields so commas line up across rows. **Minimised output** (default off) puts column definitions on a single line. **Comma first** (default off) puts the comma at the start of each new line instead of trailing the previous one. The tabular input **breaks out centered** to the canvas when columns exceed the page body (toggle to constrain; control only while overflowing).
 
 DAX dialects: `datatable`, `constructor`, `union-row`. 
 M dialects: `table`, `from-records`, `binary-from-text`.
@@ -51,7 +51,7 @@ Every HTML entry point should:
 
 `initShell()` renders shared chrome via `renderPageShell()` (`app/render-shell.js`), then boots icons, external links, heading links, theme toggle, sticky chrome offsets, tooltips, and page navigation. Do **not** duplicate footer, theme toggle, or `#page-nav` markup in HTML.
 
-Optional `renderPageShell({ repoUrl, brandUrl, brandName, alsoSee })` overrides for forks. Pass `alsoSee: false` or `alsoSee: []` to hide the footer related-apps menu.
+Optional `renderPageShell({ repoUrl, appUrl, brandUrl, brandName, alsoSee, alsoSeeUrl })` overrides for forks. Pass `alsoSee: false` or `alsoSee: []` to hide the footer related-apps menu when there is no remote list. Set `alsoSeeUrl` to a JSON URL (top-level link array) to load a shared live list; local `alsoSee` is the fallback. Set `appUrl` to this app’s public site URL so a matching entry in the list is omitted.
 
 ## Module conventions
 
@@ -89,7 +89,7 @@ Optional `renderPageShell({ repoUrl, brandUrl, brandName, alsoSee })` overrides 
 | `initSegmentedControl()` / `initSegmentedControls()` | Segmented control (toggle button group) |
 | `initPagination()` / `initPaginations()` | Client-side pagination (numbered pages, no URL change) |
 | `initTable()` / `initTables()` | Data table with optional sortable columns and row selection |
-| `initTabularInput()` / `initTabularInputs()` | Editable typed grid; paste; reset; add/remove rows and columns; rename / type |
+| `initTabularInput()` / `initTabularInputs()` | Editable typed grid; paste (in-place / replace); reset; add/remove rows and columns; rename / type |
 | `initProgressIndicator()` / `initProgressIndicators()` | Multi-step wizard with indicators, panels, and back/next |
 | `initRichTextEditor()` / `initRichTextEditors()` | Toast UI rich text editor (Markdown + WYSIWYG); requires vendor scripts |
 | `onDocumentClickOutside()` / `onDocumentEscape()` | Shared document listeners — do not add per-instance `document` listeners for these |

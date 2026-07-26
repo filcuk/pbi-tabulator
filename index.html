@@ -12,6 +12,7 @@
     <script>window.__MICROAPP__={themeStorageKey:"pbi-tabulator-theme"};</script>
     <script src="app/theme-init.js"></script>
     <link rel="stylesheet" href="app/styles.css" />
+    <link rel="stylesheet" href="app/prism.css" />
   </head>
   <body>
     <header>
@@ -85,7 +86,7 @@
                 <button type="button" class="segmented-control-item" role="radio"
                   aria-checked="true" data-segmented-control-value="datatable">DATATABLE</button>
                 <button type="button" class="segmented-control-item" role="radio"
-                  aria-checked="false" data-segmented-control-value="constructor">{}</button>
+                  aria-checked="false" data-segmented-control-value="constructor">Table Constructor</button>
                 <button type="button" class="segmented-control-item" role="radio"
                   aria-checked="false" data-segmented-control-value="union-row">UNION / ROW</button>
               </div>
@@ -125,17 +126,33 @@
             </div>
             <div id="input-code-wrap" class="hidden" hidden>
               <div
-                class="code-block"
+                class="converter-pane-actions"
+                id="input-code-actions"
+                role="toolbar"
+                aria-label="Source code actions"
+              >
+                <button type="button" class="btn converter-pane-action" id="input-code-clear" aria-label="Clear source code">
+                  <span data-icon="delete" data-icon-class="btn-icon-svg" aria-hidden="true"></span>
+                  <span class="converter-pane-action-label">Clear</span>
+                </button>
+                <button type="button" class="btn converter-pane-action" id="input-code-copy" aria-label="Copy source code">
+                  <span data-icon="copy" data-icon-class="btn-icon-svg" aria-hidden="true"></span>
+                  <span class="converter-pane-action-label">Copy</span>
+                </button>
+                <button type="button" class="btn converter-pane-action" id="input-code-paste" aria-label="Paste source code">
+                  <span data-icon="paste" data-icon-class="btn-icon-svg" aria-hidden="true"></span>
+                  <span class="converter-pane-action-label">Paste</span>
+                </button>
+              </div>
+              <div
+                class="code-block code-block--wide"
                 id="input-code"
                 data-code-mode="edit"
-                data-code-copy="true"
-                data-code-highlight="false"
-                data-code-line-numbers="false"
+                data-code-copy="false"
                 data-code-editor-label="Source code"
               >
                 <div class="code-block-body">
-                  <button type="button" class="code-block-copy btn" aria-label="Copy source code">Copy</button>
-                  <pre><code></code></pre>
+                  <pre class="line-numbers language-dax"><code class="language-dax"></code></pre>
                 </div>
               </div>
             </div>
@@ -148,14 +165,105 @@
           >
             <h2 id="config-heading">Configuration</h2>
             <p class="converter-config-hint">
-              Output column types are auto-detected. Changing a type locks it so it won’t update automatically.
+              Configure output style and column types.
             </p>
+            <div class="converter-config-options">
+              <div
+                class="toggle"
+                id="align-commas-toggle"
+                data-toggle-default="false"
+              >
+                <button
+                  type="button"
+                  class="toggle-btn"
+                  role="switch"
+                  aria-checked="false"
+                  data-tooltip="Pad fields to line up output in columns"
+                  data-tooltip-position="top"
+                >
+                  <span class="toggle-track" aria-hidden="true">
+                    <span class="toggle-thumb">
+                      <span
+                        data-icon="check"
+                        data-icon-class="toggle-thumb-icon toggle-thumb-icon--on"
+                        aria-hidden="true"
+                      ></span>
+                    </span>
+                  </span>
+                  <span class="toggle-label">Align output</span>
+                </button>
+                <input type="hidden" class="toggle-value" value="false" />
+              </div>
+              <div
+                class="toggle"
+                id="minimised-output-toggle"
+                data-toggle-default="false"
+              >
+                <button
+                  type="button"
+                  class="toggle-btn"
+                  role="switch"
+                  aria-checked="false"
+                  data-tooltip="Keep column definitions on a single line"
+                  data-tooltip-position="top"
+                >
+                  <span class="toggle-track" aria-hidden="true">
+                    <span class="toggle-thumb">
+                      <span
+                        data-icon="check"
+                        data-icon-class="toggle-thumb-icon toggle-thumb-icon--on"
+                        aria-hidden="true"
+                      ></span>
+                    </span>
+                  </span>
+                  <span class="toggle-label">Minimised output</span>
+                </button>
+                <input type="hidden" class="toggle-value" value="false" />
+              </div>
+              <div
+                class="toggle"
+                id="comma-first-toggle"
+                data-toggle-default="false"
+              >
+                <button
+                  type="button"
+                  class="toggle-btn"
+                  role="switch"
+                  aria-checked="false"
+                  data-tooltip="Use leading commas"
+                  data-tooltip-position="top"
+                >
+                  <span class="toggle-track" aria-hidden="true">
+                    <span class="toggle-thumb">
+                      <span
+                        data-icon="check"
+                        data-icon-class="toggle-thumb-icon toggle-thumb-icon--on"
+                        aria-hidden="true"
+                      ></span>
+                    </span>
+                  </span>
+                  <span class="toggle-label">Comma first</span>
+                </button>
+                <input type="hidden" class="toggle-value" value="false" />
+              </div>
+            </div>
             <div class="converter-config-list" id="config-columns" role="list"></div>
           </section>
 
           <section class="converter-pane" aria-labelledby="output-heading">
             <h2 id="output-heading">Output</h2>
             <div id="output-tabular-wrap" class="hidden" hidden>
+              <div
+                class="converter-pane-actions"
+                id="output-tabular-actions"
+                role="toolbar"
+                aria-label="Output table actions"
+              >
+                <button type="button" class="btn converter-pane-action" id="output-tabular-copy" aria-label="Copy table" data-tooltip="Copy for Excel" data-tooltip-position="top">
+                  <span data-icon="copy" data-icon-class="btn-icon-svg" aria-hidden="true"></span>
+                  <span class="converter-pane-action-label">Copy</span>
+                </button>
+              </div>
               <div
                 class="table-block table-block--wide"
                 id="output-table"
@@ -173,16 +281,24 @@
             </div>
             <div id="output-code-wrap">
               <div
-                class="code-block"
+                class="converter-pane-actions"
+                id="output-code-actions"
+                role="toolbar"
+                aria-label="Output code actions"
+              >
+                <button type="button" class="btn converter-pane-action" id="output-code-copy" aria-label="Copy output code">
+                  <span data-icon="copy" data-icon-class="btn-icon-svg" aria-hidden="true"></span>
+                  <span class="converter-pane-action-label">Copy</span>
+                </button>
+              </div>
+              <div
+                class="code-block code-block--wide"
                 id="output-code"
                 data-code-mode="select"
-                data-code-copy="true"
-                data-code-highlight="false"
-                data-code-line-numbers="false"
+                data-code-copy="false"
               >
                 <div class="code-block-body">
-                  <button type="button" class="code-block-copy btn" aria-label="Copy output code">Copy</button>
-                  <pre><code></code></pre>
+                  <pre class="line-numbers language-dax"><code class="language-dax"></code></pre>
                 </div>
               </div>
             </div>
@@ -191,6 +307,10 @@
       </section>
     </main>
 
+    <script defer src="app/vendor/prism/prism.min.js"></script>
+    <script defer src="app/vendor/prism/prism-dax.min.js"></script>
+    <script defer src="app/vendor/prism/prism-powerquery.min.js"></script>
+    <script defer src="app/vendor/prism/prism-line-numbers.min.js"></script>
     <script type="module" src="app/main.js"></script>
   </body>
 </html>
