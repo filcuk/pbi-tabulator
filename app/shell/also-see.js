@@ -72,11 +72,6 @@ function wireAlsoSeeMenu(root = document) {
     menuEl,
     toggleEl: trigger,
     itemSelector: ".dropdown-menu-item",
-    onSelect: ({ item }) => {
-      const url = item.dataset.url;
-      if (!url) return;
-      window.open(url, "_blank", "noopener,noreferrer");
-    },
   });
 }
 
