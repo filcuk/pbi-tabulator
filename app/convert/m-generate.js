@@ -43,11 +43,16 @@ export function generateM(table, dialect = "table") {
 }
 
 /** @param {import("./model.js").TableModel} model */
-function typeTableClause(model) {
-  const fields = model.columns
-    .map((col) => `${formatMFieldName(col.label)} = ${effectiveMType(col)}`)
-    .join(", ");
-  return `type table [${fields}]`;
+function typeTableClause(model, { multiline = false } = {}) {
+  const fields = model.columns.map(
+    (col) => `${formatMFieldName(col.label)} = ${effectiveMType(col)}`
+  );
+  if (!multiline) {
+    return `type table [${fields.join(", ")}]`;
+  }
+  return `type table [
+        ${fields.join(",\n        ")}
+    ]`;
 }
 
 /** @param {import("./model.js").TableModel} model */
@@ -60,10 +65,12 @@ function generateHashTable(model) {
   });
 
   const rowsBlock =
-    rows.length === 0 ? "{}" : `{\n    ${rows.join(",\n    ")}\n}`;
+    rows.length === 0
+      ? "{}"
+      : `{\n        ${rows.join(",\n        ")}\n    }`;
 
   return `#table(
-    ${typeTableClause(model)},
+    ${typeTableClause(model, { multiline: true })},
     ${rowsBlock}
 )`;
 }
