@@ -43,7 +43,8 @@ function bindGlobalErrorHandlers(onError) {
  * @param {string} [options.alsoSeeUrl] Remote JSON URL (array of link objects). Empty skips fetch.
  * @param {string} [options.appVersion] Override app SemVer (default from `app/version.js`)
  * @param {string} [options.templateVersion] Override template SemVer (default from `app/version.js`)
- * @param {import("./page-nav.js").PageNavOptions} [options.pageNav] Passed to `initPageNavPanel()`
+ * @param {false | import("./page-nav.js").PageNavOptions} [options.pageNav]
+ *   Page nav options, or `false` to omit floating nav / jump buttons.
  * @param {boolean} [options.showErrors=true] Show `.banner[data-app-error]` on uncaught errors
  * @param {(detail: object) => void} [options.onError] Called before the error banner is shown
  */
@@ -57,7 +58,7 @@ export function initShell(options = {}) {
     appUrl,
     ...shellOptions
   } = options;
-  renderPageShell({ ...shellOptions, alsoSee, alsoSeeUrl, appUrl });
+  renderPageShell({ ...shellOptions, alsoSee, alsoSeeUrl, appUrl, pageNav });
   initIcons();
   initExternalLinks(document);
   initHeadingLinks(document);
@@ -66,7 +67,9 @@ export function initShell(options = {}) {
   initThemeToggle(document.getElementById("theme-toggle"));
   initStickyChrome();
   initTooltips(document);
-  initPageNavPanel("#page-nav", pageNav);
+  if (pageNav !== false) {
+    initPageNavPanel("#page-nav", pageNav === true ? undefined : pageNav);
+  }
 
   if (showErrors && document.querySelector(".banner[data-app-error]")) {
     bindGlobalErrorHandlers(onError);

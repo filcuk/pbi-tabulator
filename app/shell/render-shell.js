@@ -176,6 +176,7 @@ export function mountAlsoSee(root, links) {
 /**
  * Inject shared page chrome: footer (links + theme toggle) and page navigation.
  * Skips if `#app-page-footer` already exists.
+ * Pass `pageNav: false` to omit the floating nav markup.
  */
 export function renderPageShell(options = {}) {
   if (!document.getElementById("skip-to-main")) {
@@ -187,13 +188,14 @@ export function renderPageShell(options = {}) {
 
   if (document.getElementById("app-page-footer")) return;
 
-  const { repoUrl, brandUrl, brandName, alsoSee, appUrl, appVersion, templateVersion } = {
+  const { repoUrl, brandUrl, brandName, alsoSee, appUrl, appVersion, templateVersion, pageNav = true } = {
     ...DEFAULTS,
     ...options,
   };
   const issuesUrl = `${repoUrl}/issues`;
   const alsoSeeLinks = normalizeAlsoSee(alsoSee, appUrl);
   const alsoSeeMarkup = renderAlsoSeeMarkup(alsoSeeLinks);
+  const pageNavMarkup = pageNav === false ? "" : PAGE_NAV_MARKUP;
 
   document.body.insertAdjacentHTML(
     "beforeend",
@@ -221,6 +223,6 @@ export function renderPageShell(options = {}) {
         <button type="button" class="theme-toggle-btn" data-theme-mode="auto" data-icon="auto-mode" data-icon-class="theme-icon" aria-label="System theme" aria-pressed="false" title="System"></button>
       </div>
     </footer>
-    ${PAGE_NAV_MARKUP}`
+    ${pageNavMarkup}`
   );
 }

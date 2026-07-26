@@ -44,7 +44,7 @@ initShell({
   brandName: "Your name",
   alsoSee: false, // or [] — hide the footer “also see” menu when no remote list
   alsoSeeUrl: "", // optional remote JSON (array of link objects)
-  pageNav: { headingSelector: "main h2[id]" },
+  pageNav: false, // omit floating page nav / jump buttons
 });
 ```
 
@@ -297,7 +297,7 @@ Component CSS lives under `app/css/` (imported via `styles.css`). Match a compon
 | **Pagination** | In-page page navigation with prev/next and numbered pages; no URL change. [`app/pagination.js`](app/pagination.js). |
 | **Table** | Data table with striped layout, sortable columns, and optional row selection. [`app/table.js`](app/table.js). |
 | **Tabular input** | Editable typed grid (text / number / logical); add/remove/reset; Excel/TSV paste with type detection; centered canvas breakout when wide. [`app/components/tabular-input.js`](app/components/tabular-input.js). |
-| **Page navigation** | Fixed `#page-nav`: always-visible jump up/down (shared progress ring), section links on hover. Group nested headings under `data-page-nav-tier` parents. [`app/page-nav.js`](app/page-nav.js). |
+| **Page navigation** | Fixed `#page-nav`: always-visible jump up/down (shared progress ring), section links on hover. Group nested headings under `data-page-nav-tier` parents. Disable with `initShell({ pageNav: false })`. [`app/page-nav.js`](app/page-nav.js). |
 | **Dialogs** | Accessible modal: backdrop, focus trap, Escape, focus restore. Markup uses `.modal` / `.modal-panel`; behaviour from [`app/dialog.js`](app/dialog.js). |
 | **Heading links** | Hover a `main h2[id]` heading to reveal a link icon; tooltip says “Get link”, then “Copied!” on success. [`app/heading-link.js`](app/heading-link.js). |
 | **External links** | Outgoing `http(s)` links get an arrow-outward icon via `initShell()` / [`app/external-link.js`](app/external-link.js). Opt out with `data-no-external-icon`. |
@@ -1716,7 +1716,7 @@ Icons used: `plus`, `delete` (reset), `remove` (row/column), `type-text`, `type-
 
 ### Page navigation
 
-Injected by `initShell()` via [`app/shell/render-shell.js`](app/shell/render-shell.js). Collects `main h2[id]` headings automatically and shows plain section-title links (same weight and colour as `.section-heading`). Give each section heading a unique `id` and optional `.section-heading` class (`scroll-margin-top` is included).
+Injected by `initShell()` via [`app/shell/render-shell.js`](app/shell/render-shell.js). Collects `main h2[id]` headings automatically and shows plain section-title links (same weight and colour as `.section-heading`). Give each section heading a unique `id` and optional `.section-heading` class (`scroll-margin-top` is included). Pass `pageNav: false` to omit the floating nav and jump buttons.
 
 ```javascript
 import { initShell } from "./shell/shell.js";
