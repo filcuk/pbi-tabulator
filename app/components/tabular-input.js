@@ -21,8 +21,9 @@
  * column; Add row in a footer row under the data.
  *
  * Width: when columns exceed the page body, the grid can break out
- * centered up to the canvas (viewport minus page padding). A toggle
- * appears only while overflowing so the user can constrain to body width.
+ * centered up to the canvas (viewport minus page padding). A Fit/Overflow
+ * toggle beside add-row appears only while overflowing so the user can
+ * constrain to body width.
  *
  * Paste: Excel/TSV clipboard paste expands from the focused body cell
  * (fallback top-left), overwrites that rectangle, auto-detects column types.
@@ -318,16 +319,9 @@ export function initTabularInput(
 
   const breakoutBtn = document.createElement("button");
   breakoutBtn.type = "button";
-  breakoutBtn.className = "btn btn-icon tabular-input-breakout-toggle";
+  breakoutBtn.className = "btn tabular-input-breakout-toggle";
   breakoutBtn.setAttribute("aria-pressed", "true");
-  breakoutBtn.append(
-    createIcon("fullscreen-exit", { className: "btn-icon-svg" })
-  );
-
-  const breakoutBar = document.createElement("div");
-  breakoutBar.className = "tabular-input-breakout-bar";
-  breakoutBar.append(breakoutBtn);
-  setHidden(breakoutBar, true);
+  setHidden(breakoutBtn, true);
 
   const addRowBtn = document.createElement("button");
   addRowBtn.type = "button";
@@ -335,6 +329,10 @@ export function initTabularInput(
   addRowBtn.setAttribute("aria-label", "Add row");
   addRowBtn.dataset.tooltip = "Add row";
   addRowBtn.append(createIcon("plus", { className: "btn-icon-svg" }));
+
+  const footerActions = document.createElement("div");
+  footerActions.className = "tabular-input-footer-actions";
+  footerActions.append(addRowBtn, breakoutBtn);
 
   const addColBtn = document.createElement("button");
   addColBtn.type = "button";
@@ -404,7 +402,7 @@ export function initTabularInput(
   liveEl.className = "tabular-input-live";
   liveEl.setAttribute("aria-live", "polite");
 
-  rootEl.replaceChildren(breakoutBar, wrapEl, liveEl);
+  rootEl.replaceChildren(wrapEl, liveEl);
   rootEl.classList.add("tabular-input");
 
   function setSizePickerHighlight(cols, rows) {
@@ -621,13 +619,18 @@ export function initTabularInput(
 
   function syncBreakoutButton() {
     const active = isOverflowing && breakoutEnabled;
+    const shortLabel = active ? "Fit" : "Overflow";
+    const tip = active ? "Fit to page width" : "Expand to canvas width";
     breakoutBtn.setAttribute("aria-pressed", active ? "true" : "false");
-    const label = active ? "Fit to page width" : "Expand to canvas width";
-    breakoutBtn.setAttribute("aria-label", label);
-    breakoutBtn.dataset.tooltip = label;
+    breakoutBtn.setAttribute("aria-label", tip);
+    breakoutBtn.dataset.tooltip = tip;
     const iconId = active ? "fullscreen-exit" : "fullscreen";
+    const labelEl = document.createElement("span");
+    labelEl.className = "tabular-input-breakout-label";
+    labelEl.textContent = shortLabel;
     breakoutBtn.replaceChildren(
-      createIcon(iconId, { className: "btn-icon-svg" })
+      createIcon(iconId, { className: "btn-icon-svg" }),
+      labelEl
     );
   }
 
@@ -657,7 +660,7 @@ export function initTabularInput(
     const contentWidth = Math.max(tableEl.scrollWidth, wrapEl.scrollWidth);
     isOverflowing = contentWidth > slotWidth + 1;
 
-    setHidden(breakoutBar, !isOverflowing);
+    setHidden(breakoutBtn, !isOverflowing);
     syncBreakoutButton();
 
     if (!isOverflowing || !breakoutEnabled) return;
@@ -1099,7 +1102,7 @@ export function initTabularInput(
     const cell = document.createElement("td");
     cell.className = "tabular-input-add-row-cell";
     cell.colSpan = Math.max(columns.length, 1);
-    cell.append(addRowBtn);
+    cell.append(footerActions);
 
     tr.append(lead, cell, createTrailingSpacerCell());
     return tr;

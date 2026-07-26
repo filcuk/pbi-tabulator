@@ -1656,7 +1656,7 @@ Editable data grid for collecting rows of typed values. Mount an empty `.tabular
 **Width / canvas breakout**
 
 - When the grid is wider than the page body, it **breaks out centered** up to the canvas (`100vw` minus page padding) instead of scrolling inside the body.
-- A toolbar toggle (`fullscreen` / `fullscreen-exit`) appears **only while overflowing**; use it to constrain back to the body (horizontal scroll) or expand again. Default is breakout on.
+- A **Fit** / **Overflow** toggle (`fullscreen` / `fullscreen-exit`) sits beside **add row** and appears **only while overflowing**; use it to constrain back to the body (horizontal scroll) or expand again. Tooltips stay “Fit to page width” / “Expand to canvas width”. Default is breakout on.
 - Opt out via `breakout: false` or `data-tabular-input-breakout="false"` (initial preference). `setBreakoutEnabled(boolean)` / `getBreakoutEnabled()` are also available.
 
 **Paste**
