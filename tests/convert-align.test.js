@@ -67,9 +67,9 @@ test("generateDax DATATABLE aligns commas when requested", () => {
 
   const aligned = generateDax(table, "datatable", { alignCommas: true });
   assert.match(aligned, /\{ "Alice", 30 \}/);
-  assert.match(aligned, /\{ "Bo"   , 5  \}/);
+  assert.match(aligned, /\{ "Bo" {3}, 5 {2}\}/);
   assert.match(aligned, /"Name", STRING,/);
-  assert.match(aligned, /"N"   , INTEGER,/);
+  assert.match(aligned, /"N" {3}, INTEGER,/);
 });
 
 test("generateDax DATATABLE commaFirst puts commas on new lines", () => {
