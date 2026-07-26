@@ -12,6 +12,7 @@
     <script>window.__MICROAPP__={themeStorageKey:"pbi-tabulator-theme"};</script>
     <script src="app/theme-init.js"></script>
     <link rel="stylesheet" href="app/styles.css" />
+    <link rel="stylesheet" href="app/prism.css" />
   </head>
   <body>
     <header>
@@ -129,20 +130,18 @@
                 id="input-code"
                 data-code-mode="edit"
                 data-code-copy="true"
-                data-code-highlight="false"
-                data-code-line-numbers="false"
                 data-code-editor-label="Source code"
               >
                 <div class="code-block-body">
                   <button type="button" class="code-block-copy btn" aria-label="Copy source code">Copy</button>
-                  <pre><code></code></pre>
+                  <pre class="line-numbers language-dax"><code class="language-dax"></code></pre>
                 </div>
               </div>
             </div>
           </section>
 
           <section
-            class="converter-pane converter-config"
+            class="converter of-pane converter-config"
             id="config-section"
             aria-labelledby="config-heading"
           >
@@ -257,12 +256,10 @@
                 id="output-code"
                 data-code-mode="select"
                 data-code-copy="true"
-                data-code-highlight="false"
-                data-code-line-numbers="false"
               >
                 <div class="code-block-body">
                   <button type="button" class="code-block-copy btn" aria-label="Copy output code">Copy</button>
-                  <pre><code></code></pre>
+                  <pre class="line-numbers language-dax"><code class="language-dax"></code></pre>
                 </div>
               </div>
             </div>
@@ -271,6 +268,10 @@
       </section>
     </main>
 
+    <script defer src="app/vendor/prism/prism.min.js"></script>
+    <script defer src="app/vendor/prism/prism-dax.min.js"></script>
+    <script defer src="app/vendor/prism/prism-powerquery.min.js"></script>
+    <script defer src="app/vendor/prism/prism-line-numbers.min.js"></script>
     <script type="module" src="app/main.js"></script>
   </body>
 </html>

@@ -1825,6 +1825,8 @@ Optional syntax highlighting for docs or demos. See [`demo.html`](demo.html) for
 <link rel="stylesheet" href="app/prism.css" />
 <script defer src="app/vendor/prism/prism.min.js"></script>
 <script defer src="app/vendor/prism/prism-python.min.js"></script>
+<script defer src="app/vendor/prism/prism-dax.min.js"></script>
+<script defer src="app/vendor/prism/prism-powerquery.min.js"></script>
 <script defer src="app/vendor/prism/prism-line-numbers.min.js"></script>
 ```
 
@@ -1853,6 +1855,8 @@ initExpandableSurfaces(document);
 
 Set `data-code-copy="false"` on `.code-block` to disable the copy button. Line numbers require highlighting to be on. Add `.code-block--wide` to remove the default `40rem` max width.
 
+This app loads Prism **DAX** (`language-dax`) and **Power Query** (`language-powerquery`, aliases `pq` / `mscript`) for the converter panes. Switch languages at runtime via `initCodeBlock()` → `setLanguage("dax")` / `getLanguage()`.
+
 **Interaction modes** — set `data-code-mode` on `.code-block`:
 
 | Mode | Behaviour |
@@ -1861,7 +1865,9 @@ Set `data-code-copy="false"` on `.code-block` to disable the copy button. Line n
 | `select` | Read-only; text selectable; copy and highlight toggles (default) |
 | `edit` | Editable overlay on highlighted `<pre>`; line numbers and highlight toggles apply |
 
-Switch modes at runtime via `initCodeBlock()` → `setMode("edit")`, `getMode()`, `getSource()`, `setSource(text)`.
+Switch modes at runtime via `initCodeBlock()` → `setMode("edit")`, `getMode()`, `getSource()`, `setSource(text)`, `getLanguage()`, `setLanguage(id)`.
+
+Add other language components under `app/vendor/prism/` as needed from [Prism](https://prismjs.com/).
 
 ### Expandable surface
 
@@ -1881,8 +1887,6 @@ import { initExpandableSurfaces } from "./components/expandable-surface.js";
 
 initExpandableSurfaces(document);
 ```
-
-Add other language components under `app/vendor/prism/` as needed from [Prism](https://prismjs.com/).
 
 ### Icons
 

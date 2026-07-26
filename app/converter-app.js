@@ -24,6 +24,17 @@ import {
 
 const DEBOUNCE_MS = 280;
 
+/**
+ * Prism language id for a converter lang (`dax` | `m`).
+ * @param {string} lang
+ * @returns {string | null}
+ */
+function prismLanguage(lang) {
+  if (lang === "dax") return "dax";
+  if (lang === "m") return "powerquery";
+  return null;
+}
+
 const SAMPLE = normalizeTable({
   columns: [
     { id: "name", label: "Name", type: "text" },
@@ -208,14 +219,10 @@ export function initConverterApp({ root = document } = {}) {
 
   const inputCode = initCodeBlock(root.querySelector("#input-code"), {
     mode: "edit",
-    highlight: false,
-    lineNumbers: false,
   });
 
   const outputCode = initCodeBlock(root.querySelector("#output-code"), {
     mode: "select",
-    highlight: false,
-    lineNumbers: false,
   });
 
   const sourceControl = initSegmentedControl(root.querySelector("#source-control"), {
@@ -518,6 +525,11 @@ export function initConverterApp({ root = document } = {}) {
     setHidden(outputTabularWrap, !targetIsTable);
     setHidden(outputCodeWrap, targetIsTable);
     setHidden(configSection, !configVisible());
+
+    const inputLang = prismLanguage(source);
+    if (inputLang) inputCode?.setLanguage(inputLang);
+    const outputLang = prismLanguage(target);
+    if (outputLang) outputCode?.setLanguage(outputLang);
   }
 
   /**
