@@ -13,7 +13,7 @@ Bidirectional converter between tabular data, DAX, and Power Query M.
 | [`app/convert/index.js`](app/convert/index.js) | Facade: `parse(lang, text)`, `generate(lang, dialect, table)` |
 | [`app/components/tabular-input.js`](app/components/tabular-input.js) | Editable typed grid (canonical model shape) |
 
-Canonical table shape: `{ columns: [{ id, label, type, outputType? }], rows: [{ id, cells }] }` with types `text` | `number` | `logical`. Optional `outputType` is the exact DAX/M type used when generating (see `app/convert/output-types.js`). When source is tabular and target is DAX/M, the Configuration section lets users override per-column output types; auto-detected until manually changed (then locked).
+Canonical table shape: `{ columns: [{ id, label, type, outputType? }], rows: [{ id, cells }] }` with types `text` | `number` | `logical`. Optional `outputType` is the exact DAX/M type used when generating (see `app/convert/output-types.js`). When source is tabular and target is DAX/M, the Configuration section lets users override per-column output types; auto-detected until manually changed (then locked). An **Align commas** toggle (default off) pads fields so commas line up across rows in generated output.
 
 DAX dialects: `datatable`, `constructor`, `union-row`. 
 M dialects: `table`, `from-records`, `binary-from-text`.

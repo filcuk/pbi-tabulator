@@ -150,6 +150,36 @@
             <p class="converter-config-hint">
               Output column types are auto-detected. Changing a type locks it so it won’t update automatically. Click Locked to unlock and restore auto.
             </p>
+            <div class="converter-config-options">
+              <div
+                class="toggle"
+                id="align-commas-toggle"
+                data-toggle-default="false"
+              >
+                <button
+                  type="button"
+                  class="toggle-btn"
+                  role="switch"
+                  aria-checked="false"
+                >
+                  <span class="toggle-track" aria-hidden="true">
+                    <span class="toggle-thumb">
+                      <span
+                        data-icon="check"
+                        data-icon-class="toggle-thumb-icon toggle-thumb-icon--on"
+                        aria-hidden="true"
+                      ></span>
+                    </span>
+                  </span>
+                  <span
+                    class="toggle-label"
+                    data-tooltip="Pad fields so output lines up across rows"
+                    data-tooltip-position="top"
+                    >Align output</span>
+                </button>
+                <input type="hidden" class="toggle-value" value="false" />
+              </div>
+            </div>
             <div class="converter-config-list" id="config-columns" role="list"></div>
           </section>
 

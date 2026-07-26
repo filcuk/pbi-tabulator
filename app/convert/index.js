@@ -47,21 +47,30 @@ export function parse(lang, text) {
  * @param {"dax" | "m"} lang
  * @param {string} dialect
  * @param {import("./model.js").TableModel} table
+ * @param {{ alignCommas?: boolean }} [options]
  * @returns {Promise<string> | string}
  */
-export function generate(lang, dialect, table) {
+export function generate(lang, dialect, table, options = {}) {
   const model = normalizeTable(table);
   if (lang === "dax") {
     if (!DAX_DIALECTS.includes(/** @type {import("./model.js").DaxDialect} */ (dialect))) {
       throw new ConvertError(`Unknown DAX dialect: ${dialect}`);
     }
-    return generateDax(model, /** @type {import("./model.js").DaxDialect} */ (dialect));
+    return generateDax(
+      model,
+      /** @type {import("./model.js").DaxDialect} */ (dialect),
+      options
+    );
   }
   if (lang === "m") {
     if (!M_DIALECTS.includes(/** @type {import("./model.js").MDialect} */ (dialect))) {
       throw new ConvertError(`Unknown M dialect: ${dialect}`);
     }
-    return generateM(model, /** @type {import("./model.js").MDialect} */ (dialect));
+    return generateM(
+      model,
+      /** @type {import("./model.js").MDialect} */ (dialect),
+      options
+    );
   }
   throw new ConvertError(`Cannot generate language: ${lang}`);
 }

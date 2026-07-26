@@ -7,6 +7,7 @@ import { initSegmentedControl } from "./components/segmented-control.js";
 import { initTabularInput } from "./components/tabular-input.js";
 import { initTable } from "./components/table.js";
 import { initCodeBlock } from "./components/code-block.js";
+import { initToggle } from "./components/toggle.js";
 import { showBanner, hideBanner } from "./components/banner.js";
 import {
   ConvertError,
@@ -179,6 +180,7 @@ export function initConverterApp({ root = document } = {}) {
   let target = "dax";
   let daxDialect = "datatable";
   let mDialect = "table";
+  let alignCommas = false;
   let syncing = false;
   let convertGen = 0;
   /** @type {ReturnType<typeof setTimeout> | undefined} */
@@ -244,6 +246,15 @@ export function initConverterApp({ root = document } = {}) {
     onChange({ value, source: changeSource }) {
       if (changeSource === "init") return;
       mDialect = value;
+      void runConvert();
+    },
+  });
+
+  initToggle(root.querySelector("#align-commas-toggle"), {
+    defaultChecked: false,
+    onChange({ checked, source: changeSource }) {
+      if (changeSource === "init") return;
+      alignCommas = checked;
       void runConvert();
     },
   });
@@ -536,7 +547,7 @@ export function initConverterApp({ root = document } = {}) {
         inputTabular?.setData(model, { emitEvent: false });
       } else {
         const dialect = source === "dax" ? daxDialect : mDialect;
-        const code = await generate(source, dialect, model);
+        const code = await generate(source, dialect, model, { alignCommas });
         inputCode?.setSource(String(await code));
       }
     } catch (err) {
@@ -565,7 +576,7 @@ export function initConverterApp({ root = document } = {}) {
           inputTabular?.setData(model, { emitEvent: false });
         } else {
           const dialect = source === "dax" ? daxDialect : mDialect;
-          const code = await generate(source, dialect, model);
+          const code = await generate(source, dialect, model, { alignCommas });
           inputCode?.setSource(String(await code));
         }
       } catch (err) {
@@ -613,7 +624,7 @@ export function initConverterApp({ root = document } = {}) {
         const dialect = target === "dax" ? daxDialect : mDialect;
         const typed =
           source === "tabular" ? modelWithOutputTypes(model, target) : model;
-        const code = await generate(target, dialect, typed);
+        const code = await generate(target, dialect, typed, { alignCommas });
         if (gen !== convertGen) return;
         outputCode?.setSource(String(await code));
       }
