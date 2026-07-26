@@ -357,14 +357,47 @@ export function initConverterApp({ root = document } = {}) {
       };
       if (!typeConfig.has(col.id)) typeConfig.set(col.id, cfg);
 
-      const row = document.createElement("div");
-      row.className = "converter-config-row";
-      row.setAttribute("role", "listitem");
+      const cell = document.createElement("div");
+      cell.className = "converter-config-cell";
+      cell.setAttribute("role", "listitem");
+
+      const head = document.createElement("div");
+      head.className = "converter-config-cell-head";
 
       const name = document.createElement("span");
       name.className = "converter-config-name";
       name.textContent = col.label || col.id;
       name.title = col.label || col.id;
+
+      const lock = document.createElement(cfg.locked ? "button" : "span");
+      lock.className = "converter-config-lock";
+      lock.dataset.locked = cfg.locked ? "true" : "false";
+      lock.textContent = cfg.locked ? "Locked" : "Auto";
+
+      if (cfg.locked) {
+        lock.type = "button";
+        lock.dataset.tooltip = "Click for auto";
+        lock.dataset.tooltipPosition = "top";
+        lock.setAttribute(
+          "aria-label",
+          `Unlock output type for ${col.label || col.id}`
+        );
+        lock.addEventListener("click", () => {
+          const suggested = suggestOutputType(
+            lang,
+            col.type,
+            columnValues(col)
+          );
+          typeConfig.set(col.id, {
+            outputType: suggested,
+            locked: false,
+          });
+          renderConfigUi();
+          void runConvert();
+        });
+      }
+
+      head.append(name, lock);
 
       const select = document.createElement("select");
       select.className = "input converter-config-type";
@@ -399,37 +432,8 @@ export function initConverterApp({ root = document } = {}) {
         void runConvert();
       });
 
-      const lock = document.createElement(cfg.locked ? "button" : "span");
-      lock.className = "converter-config-lock";
-      lock.dataset.locked = cfg.locked ? "true" : "false";
-      lock.textContent = cfg.locked ? "Locked" : "Auto";
-
-      if (cfg.locked) {
-        lock.type = "button";
-        lock.dataset.tooltip =
-          "Click for auto";
-        lock.dataset.tooltipPosition = "top";
-        lock.setAttribute(
-          "aria-label",
-          `Unlock output type for ${col.label || col.id}`
-        );
-        lock.addEventListener("click", () => {
-          const suggested = suggestOutputType(
-            lang,
-            col.type,
-            columnValues(col)
-          );
-          typeConfig.set(col.id, {
-            outputType: suggested,
-            locked: false,
-          });
-          renderConfigUi();
-          void runConvert();
-        });
-      }
-
-      row.append(name, select, lock);
-      frag.append(row);
+      cell.append(head, select);
+      frag.append(cell);
     }
 
     configColumnsEl.replaceChildren(frag);

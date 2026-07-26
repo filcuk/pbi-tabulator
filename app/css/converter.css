@@ -60,25 +60,33 @@
 }
 
 .converter-config-list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
   gap: 0.5rem;
 }
 
-.converter-config-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(8rem, 12rem) auto;
-  gap: 0.75rem;
-  align-items: center;
-  padding: 0.5rem 0.75rem;
+.converter-config-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
+  padding: 0.5rem 0.65rem;
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--surface);
 }
 
+.converter-config-cell-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
 .converter-config-name {
   min-width: 0;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   color: var(--text);
   overflow: hidden;
@@ -88,13 +96,17 @@
 
 .converter-config-type {
   width: 100%;
+  min-height: 2rem;
+  padding: 0 0.5rem;
+  font-size: 0.8125rem;
 }
 
 .converter-config-lock {
-  font-size: 0.75rem;
+  flex-shrink: 0;
+  font-size: 0.6875rem;
   color: var(--muted);
   white-space: nowrap;
-  min-width: 3.5rem;
+  line-height: 1.2;
 }
 
 button.converter-config-lock {
@@ -104,8 +116,8 @@ button.converter-config-lock {
   border: none;
   background: none;
   font: inherit;
-  font-size: 0.75rem;
-  text-align: left;
+  font-size: 0.6875rem;
+  text-align: right;
   cursor: pointer;
 }
 
@@ -120,6 +132,7 @@ button.converter-config-lock:focus-visible {
 }
 
 .converter-config-empty {
+  grid-column: 1 / -1;
   margin: 0;
   padding: 0.75rem;
   font-size: 0.875rem;
@@ -127,17 +140,6 @@ button.converter-config-lock:focus-visible {
   text-align: center;
   border: 1px dashed var(--border);
   border-radius: 6px;
-}
-
-@media (max-width: 640px) {
-  .converter-config-row {
-    grid-template-columns: 1fr;
-    gap: 0.35rem;
-  }
-
-  .converter-config-lock {
-    min-width: 0;
-  }
 }
 
 .converter-pane .code-block-body {
