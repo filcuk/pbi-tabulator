@@ -93,9 +93,10 @@ function generateHashTable(model, opts) {
       formatMLiteral(row.cells[col.id], mFormatType(col))
     )
   );
-  const rows = joinRows(cellRows, { align: opts.alignCommas }).map(
-    (line) => `{${line}}`
-  );
+  const rows = joinRows(cellRows, {
+    align: opts.alignCommas,
+    padLast: opts.alignCommas,
+  }).map((line) => `{${line}}`);
 
   const rowsBlock =
     rows.length === 0
@@ -128,9 +129,10 @@ function generateFromRecords(model, opts) {
       return `${name} = ${value}`;
     })
   );
-  const records = joinRows(fieldRows, { align: opts.alignCommas }).map(
-    (line) => `[${line}]`
-  );
+  const records = joinRows(fieldRows, {
+    align: opts.alignCommas,
+    padLast: opts.alignCommas,
+  }).map((line) => `[${line}]`);
 
   return `Table.FromRecords({
     ${records.join(",\n    ")}

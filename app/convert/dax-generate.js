@@ -74,9 +74,10 @@ function generateDatatable(model, opts) {
       formatDaxLiteral(row.cells[col.id], daxFormatType(col))
     )
   );
-  const rowParts = joinRows(cellRows, { align: opts.alignCommas }).map(
-    (line) => `{ ${line} }`
-  );
+  const rowParts = joinRows(cellRows, {
+    align: opts.alignCommas,
+    padLast: opts.alignCommas,
+  }).map((line) => `{ ${line} }`);
 
   const rowsBlock =
     rowParts.length === 0
@@ -99,9 +100,10 @@ function generateConstructor(model, opts) {
       formatDaxLiteral(row.cells[col.id], daxFormatType(col))
     )
   );
-  const tupleRows = joinRows(cellRows, { align: opts.alignCommas }).map(
-    (line) => `( ${line} )`
-  );
+  const tupleRows = joinRows(cellRows, {
+    align: opts.alignCommas,
+    padLast: opts.alignCommas,
+  }).map((line) => `( ${line} )`);
 
   const selectRows = model.columns.map((col, index) => [
     quoteString(col.label),
@@ -131,9 +133,10 @@ function generateUnionRow(model, opts) {
       formatDaxLiteral(row.cells[col.id], daxFormatType(col)),
     ])
   );
-  const rowExprs = joinRows(partRows, { align: opts.alignCommas }).map(
-    (line) => `ROW(${line})`
-  );
+  const rowExprs = joinRows(partRows, {
+    align: opts.alignCommas,
+    padLast: opts.alignCommas,
+  }).map((line) => `ROW(${line})`);
 
   if (rowExprs.length === 1) return rowExprs[0];
   return `UNION(\n    ${rowExprs.join(",\n    ")}\n)`;

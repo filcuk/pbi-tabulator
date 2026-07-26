@@ -12,6 +12,18 @@ test("joinAligned pads fields so commas line up", () => {
   assert.deepEqual(lines, ["Abc, Def", "A  , B"]);
 });
 
+test("joinAligned padLast pads the final field for end brackets", () => {
+  const lines = joinAligned(
+    [
+      ["Abc", "Def"],
+      ["A", "B"],
+    ],
+    ", ",
+    { padLast: true }
+  );
+  assert.deepEqual(lines, ["Abc, Def", "A  , B  "]);
+});
+
 test("joinRows without align joins tightly", () => {
   assert.deepEqual(
     joinRows([
@@ -39,10 +51,10 @@ test("generateDax DATATABLE aligns commas when requested", () => {
   assert.match(plain, /\{\s*"Bo", 5\s*\}/);
 
   const aligned = generateDax(table, "datatable", { alignCommas: true });
-  assert.match(aligned, /"Alice", 30/);
-  assert.match(aligned, /"Bo"   , 5/);
-  assert.match(aligned, /"Name", STRING/);
-  assert.match(aligned, /"N"   , INTEGER/);
+  assert.match(aligned, /\{ "Alice", 30 \}/);
+  assert.match(aligned, /\{ "Bo"   , 5  \}/);
+  assert.match(aligned, /"Name", STRING,/);
+  assert.match(aligned, /"N"   , INTEGER,/);
 });
 
 test("generateDax DATATABLE minimised puts columns on one line", () => {
