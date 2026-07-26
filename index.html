@@ -281,13 +281,23 @@
             </div>
             <div id="output-code-wrap">
               <div
+                class="converter-pane-actions"
+                id="output-code-actions"
+                role="toolbar"
+                aria-label="Output code actions"
+              >
+                <button type="button" class="btn converter-pane-action" id="output-code-copy" aria-label="Copy output code">
+                  <span data-icon="copy" data-icon-class="btn-icon-svg" aria-hidden="true"></span>
+                  <span class="converter-pane-action-label">Copy</span>
+                </button>
+              </div>
+              <div
                 class="code-block code-block--wide"
                 id="output-code"
                 data-code-mode="select"
-                data-code-copy="true"
+                data-code-copy="false"
               >
                 <div class="code-block-body">
-                  <button type="button" class="code-block-copy btn" aria-label="Copy output code">Copy</button>
                   <pre class="line-numbers language-dax"><code class="language-dax"></code></pre>
                 </div>
               </div>

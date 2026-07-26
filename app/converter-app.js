@@ -334,13 +334,16 @@ export function initConverterApp({ root = document } = {}) {
   const inputCodeCopyBtn = root.querySelector("#input-code-copy");
   const inputCodePasteBtn = root.querySelector("#input-code-paste");
   const outputTabularCopyBtn = root.querySelector("#output-tabular-copy");
+  const outputCodeCopyBtn = root.querySelector("#output-code-copy");
 
   /** @type {{ current: ReturnType<typeof setTimeout> | null }} */
   const inputCopyFlash = { current: null };
   /** @type {{ current: ReturnType<typeof setTimeout> | null }} */
   const inputPasteFlash = { current: null };
   /** @type {{ current: ReturnType<typeof setTimeout> | null }} */
-  const outputCopyFlash = { current: null };
+  const outputTabularCopyFlash = { current: null };
+  /** @type {{ current: ReturnType<typeof setTimeout> | null }} */
+  const outputCodeCopyFlash = { current: null };
 
   /** @type {{ cleanup: () => void, resolve: (text: string | null) => void } | null} */
   let pasteCaptureSession = null;
@@ -438,7 +441,18 @@ export function initConverterApp({ root = document } = {}) {
       outputTabularCopyBtn,
       ok ? "Copied" : "Failed",
       "Copy",
-      outputCopyFlash
+      outputTabularCopyFlash
+    );
+  });
+
+  outputCodeCopyBtn?.addEventListener("click", async () => {
+    const text = outputCode?.getSource() ?? "";
+    const ok = await copyTextToClipboard(text);
+    flashActionLabel(
+      outputCodeCopyBtn,
+      ok ? "Copied" : "Failed",
+      "Copy",
+      outputCodeCopyFlash
     );
   });
 
