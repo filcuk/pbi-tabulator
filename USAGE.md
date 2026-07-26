@@ -1848,7 +1848,7 @@ initCodeBlocks(document);
 initExpandableSurfaces(document);
 ```
 
-Set `data-code-copy="false"` on `.code-block` to disable the copy button. Line numbers require highlighting to be on.
+Set `data-code-copy="false"` on `.code-block` to disable the copy button. Line numbers require highlighting to be on. Add `.code-block--wide` to remove the default `40rem` max width.
 
 **Interaction modes** — set `data-code-mode` on `.code-block`:
 

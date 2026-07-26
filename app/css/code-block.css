@@ -6,6 +6,10 @@
   background: var(--code-bg);
 }
 
+.code-block--wide {
+  max-width: none;
+}
+
 .code-block-toolbar {
   display: flex;
   flex-wrap: wrap;
