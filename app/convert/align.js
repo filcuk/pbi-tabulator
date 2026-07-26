@@ -50,3 +50,23 @@ export function joinRows(
     Array.isArray(row) ? row.map((cell) => String(cell ?? "")).join(separator) : ""
   );
 }
+
+/**
+ * Join lines with trailing commas (default) or leading commas on each new line.
+ * `indent` is the whitespace before each continuation line. With comma-first,
+ * that indent is unchanged and `, ` is inserted before the value; the first
+ * item is padded by two spaces so values still line up.
+ *
+ * @param {string[]} lines
+ * @param {{ commaFirst?: boolean, indent?: string }} [opts]
+ * @returns {string}
+ */
+export function joinList(lines, { commaFirst = false, indent = "" } = {}) {
+  if (!Array.isArray(lines) || lines.length === 0) return "";
+  if (lines.length === 1) return lines[0];
+  if (!commaFirst) return lines.join(`,\n${indent}`);
+  const [first, ...rest] = lines;
+  return [`  ${first}`, ...rest.map((line) => `${indent}, ${line}`)].join(
+    "\n"
+  );
+}

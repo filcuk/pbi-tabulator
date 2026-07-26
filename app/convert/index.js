@@ -47,7 +47,7 @@ export function parse(lang, text) {
  * @param {"dax" | "m"} lang
  * @param {string} dialect
  * @param {import("./model.js").TableModel} table
- * @param {{ alignCommas?: boolean, minimised?: boolean }} [options]
+ * @param {{ alignCommas?: boolean, minimised?: boolean, commaFirst?: boolean }} [options]
  * @returns {Promise<string> | string}
  */
 export function generate(lang, dialect, table, options = {}) {

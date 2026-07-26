@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { joinAligned, joinRows } from "../app/convert/align.js";
+import { joinAligned, joinList, joinRows } from "../app/convert/align.js";
 import { generateDax } from "../app/convert/dax-generate.js";
 import { normalizeTable } from "../app/convert/model.js";
 
@@ -34,6 +34,21 @@ test("joinRows without align joins tightly", () => {
   );
 });
 
+test("joinList uses trailing commas by default", () => {
+  assert.equal(joinList(["a", "b"], { indent: "    " }), "a,\n    b");
+});
+
+test("joinList commaFirst puts commas at the start of new lines", () => {
+  assert.equal(
+    joinList(["a", "b"], { commaFirst: true, indent: "    " }),
+    "  a\n    , b"
+  );
+  assert.equal(
+    joinList(["a", "b"], { commaFirst: true, indent: "        " }),
+    "  a\n        , b"
+  );
+});
+
 test("generateDax DATATABLE aligns commas when requested", () => {
   const table = normalizeTable({
     columns: [
@@ -55,6 +70,24 @@ test("generateDax DATATABLE aligns commas when requested", () => {
   assert.match(aligned, /\{ "Bo"   , 5  \}/);
   assert.match(aligned, /"Name", STRING,/);
   assert.match(aligned, /"N"   , INTEGER,/);
+});
+
+test("generateDax DATATABLE commaFirst puts commas on new lines", () => {
+  const table = normalizeTable({
+    columns: [
+      { id: "name", label: "Name", type: "text", outputType: "STRING" },
+      { id: "n", label: "N", type: "number", outputType: "INTEGER" },
+    ],
+    rows: [
+      { cells: { name: "Alice", n: 30 } },
+      { cells: { name: "Bo", n: 5 } },
+    ],
+  });
+
+  const code = generateDax(table, "datatable", { commaFirst: true });
+  assert.match(code, / {6}"Name", STRING\n {4}, "N", INTEGER,/);
+  assert.match(code, / {10}\{\s*"Alice", 30\s*\}\n {8}, \{\s*"Bo", 5\s*\}/);
+  assert.doesNotMatch(code, /\{\s*"Alice", 30\s*\},/);
 });
 
 test("generateDax DATATABLE minimised puts columns on one line", () => {

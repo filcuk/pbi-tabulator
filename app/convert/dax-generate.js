@@ -4,7 +4,7 @@
  * Dialects: datatable | constructor | union-row
  */
 
-import { joinRows } from "./align.js";
+import { joinList, joinRows } from "./align.js";
 import { ConvertError, normalizeTable } from "./model.js";
 import {
   effectiveDaxType,
@@ -13,7 +13,7 @@ import {
 import { formatDaxLiteral, quoteString } from "./scan.js";
 
 /**
- * @typedef {{ alignCommas?: boolean, minimised?: boolean }} GenerateOptions
+ * @typedef {{ alignCommas?: boolean, minimised?: boolean, commaFirst?: boolean }} GenerateOptions
  */
 
 /**
@@ -37,6 +37,7 @@ export function generateDax(table, dialect = "datatable", options = {}) {
   const opts = {
     alignCommas: Boolean(options.alignCommas),
     minimised: Boolean(options.minimised),
+    commaFirst: Boolean(options.commaFirst),
   };
 
   switch (dialect) {
@@ -67,7 +68,12 @@ function generateDatatable(model, opts) {
   const headerParts = joinRows(headerRows, {
     align: opts.alignCommas && !opts.minimised,
   });
-  const headerSep = opts.minimised ? ", " : ",\n    ";
+  const headers = opts.minimised
+    ? headerParts.join(", ")
+    : joinList(headerParts, {
+        commaFirst: opts.commaFirst,
+        indent: "    ",
+      });
 
   const cellRows = model.rows.map((row) =>
     model.columns.map((col) =>
@@ -82,10 +88,13 @@ function generateDatatable(model, opts) {
   const rowsBlock =
     rowParts.length === 0
       ? "{}"
-      : `{\n        ${rowParts.join(",\n        ")}\n    }`;
+      : `{\n        ${joinList(rowParts, {
+          commaFirst: opts.commaFirst,
+          indent: "        ",
+        })}\n    }`;
 
   return `DATATABLE(
-    ${headerParts.join(headerSep)},
+    ${headers},
     ${rowsBlock}
 )`;
 }
@@ -109,14 +118,22 @@ function generateConstructor(model, opts) {
     quoteString(col.label),
     `[Value${index + 1}]`,
   ]);
-  const selectSep = opts.minimised ? ", " : ",\n    ";
-  const selectCols = joinRows(selectRows, {
+  const selectParts = joinRows(selectRows, {
     align: opts.alignCommas && !opts.minimised,
-  }).join(selectSep);
+  });
+  const selectCols = opts.minimised
+    ? selectParts.join(", ")
+    : joinList(selectParts, {
+        commaFirst: opts.commaFirst,
+        indent: "    ",
+      });
 
   return `SELECTCOLUMNS(
     {
-        ${tupleRows.join(",\n        ")}
+        ${joinList(tupleRows, {
+          commaFirst: opts.commaFirst,
+          indent: "        ",
+        })}
     },
     ${selectCols}
 )`;
@@ -139,7 +156,12 @@ function generateUnionRow(model, opts) {
   }).map((line) => `ROW(${line})`);
 
   if (rowExprs.length === 1) return rowExprs[0];
-  return `UNION(\n    ${rowExprs.join(",\n    ")}\n)`;
+  return `UNION(
+    ${joinList(rowExprs, {
+      commaFirst: opts.commaFirst,
+      indent: "    ",
+    })}
+)`;
 }
 
 /**

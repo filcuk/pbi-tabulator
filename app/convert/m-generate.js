@@ -4,7 +4,7 @@
  * Dialects: table | from-records | binary-from-text
  */
 
-import { joinRows } from "./align.js";
+import { joinList, joinRows } from "./align.js";
 import { ConvertError, normalizeTable } from "./model.js";
 import {
   effectiveMType,
@@ -14,7 +14,7 @@ import { formatMFieldName, formatMLiteral, quoteString } from "./scan.js";
 import { encodeJsonDeflateBase64 } from "./binary.js";
 
 /**
- * @typedef {{ alignCommas?: boolean, minimised?: boolean }} GenerateOptions
+ * @typedef {{ alignCommas?: boolean, minimised?: boolean, commaFirst?: boolean }} GenerateOptions
  */
 
 /**
@@ -39,6 +39,7 @@ export function generateM(table, dialect = "table", options = {}) {
   const opts = {
     alignCommas: Boolean(options.alignCommas),
     minimised: Boolean(options.minimised),
+    commaFirst: Boolean(options.commaFirst),
   };
 
   switch (dialect) {
@@ -55,11 +56,16 @@ export function generateM(table, dialect = "table", options = {}) {
 
 /**
  * @param {import("./model.js").TableModel} model
- * @param {{ multiline?: boolean, alignCommas?: boolean, blockIndent?: string }} [opts]
+ * @param {{ multiline?: boolean, alignCommas?: boolean, commaFirst?: boolean, blockIndent?: string }} [opts]
  */
 function typeTableClause(
   model,
-  { multiline = false, alignCommas = false, blockIndent = "    " } = {}
+  {
+    multiline = false,
+    alignCommas = false,
+    commaFirst = false,
+    blockIndent = "    ",
+  } = {}
 ) {
   const parts = model.columns.map((col) => [
     formatMFieldName(col.label),
@@ -79,7 +85,7 @@ function typeTableClause(
     : parts.map((p) => p.join(" = "));
 
   return `type table [
-${fieldIndent}${fields.join(`,\n${fieldIndent}`)}
+${fieldIndent}${joinList(fields, { commaFirst, indent: fieldIndent })}
 ${blockIndent}]`;
 }
 
@@ -101,12 +107,16 @@ function generateHashTable(model, opts) {
   const rowsBlock =
     rows.length === 0
       ? "{}"
-      : `{\n        ${rows.join(",\n        ")}\n    }`;
+      : `{\n        ${joinList(rows, {
+          commaFirst: opts.commaFirst,
+          indent: "        ",
+        })}\n    }`;
 
   return `#table(
     ${typeTableClause(model, {
       multiline: !opts.minimised,
       alignCommas: opts.alignCommas && !opts.minimised,
+      commaFirst: opts.commaFirst && !opts.minimised,
     })},
     ${rowsBlock}
 )`;
@@ -135,7 +145,10 @@ function generateFromRecords(model, opts) {
   }).map((line) => `[${line}]`);
 
   return `Table.FromRecords({
-    ${records.join(",\n    ")}
+    ${joinList(records, {
+      commaFirst: opts.commaFirst,
+      indent: "    ",
+    })}
 })`;
 }
 
@@ -160,6 +173,7 @@ async function generateBinaryFromText(model, opts) {
   const typeClause = typeTableClause(model, {
     multiline: !opts.minimised,
     alignCommas: opts.alignCommas && !opts.minimised,
+    commaFirst: opts.commaFirst && !opts.minimised,
     blockIndent: "        ",
   });
 

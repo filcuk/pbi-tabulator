@@ -182,6 +182,7 @@ export function initConverterApp({ root = document } = {}) {
   let mDialect = "table";
   let alignCommas = false;
   let minimised = false;
+  let commaFirst = false;
   let syncing = false;
   let convertGen = 0;
   /** @type {ReturnType<typeof setTimeout> | undefined} */
@@ -269,9 +270,18 @@ export function initConverterApp({ root = document } = {}) {
     },
   });
 
-  /** @returns {{ alignCommas: boolean, minimised: boolean }} */
+  initToggle(root.querySelector("#comma-first-toggle"), {
+    defaultChecked: false,
+    onChange({ checked, source: changeSource }) {
+      if (changeSource === "init") return;
+      commaFirst = checked;
+      void runConvert();
+    },
+  });
+
+  /** @returns {{ alignCommas: boolean, minimised: boolean, commaFirst: boolean }} */
   function generateOptions() {
-    return { alignCommas, minimised };
+    return { alignCommas, minimised, commaFirst };
   }
 
   root.querySelector("#input-code")?.addEventListener(
