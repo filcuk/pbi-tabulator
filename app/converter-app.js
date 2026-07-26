@@ -69,7 +69,7 @@ const SAMPLE = normalizeTable({
         active: false,
         amount: 9.5,
         day: "2025-01-15",
-        updated: "2025-01-15T09:00:00",
+        updated: "2025-01-15 09:00:00",
         at: "09:00:00",
         span: "PT30M",
       },

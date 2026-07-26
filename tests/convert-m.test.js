@@ -39,7 +39,7 @@ const sample = normalizeTable({
         qty: 25,
         active: false,
         day: "2025-01-15",
-        updated: "2025-01-15T09:00:00",
+        updated: "2025-01-15 09:00:00",
         at: "09:00:00",
         span: "PT30M",
       },
@@ -50,7 +50,7 @@ const sample = normalizeTable({
 test("deflate/inflate base64 JSON round-trip", async () => {
   const payload = [
     ["Alice", 30, true, "2024-06-01", "2024-06-01 14:30:00", "14:30:00", "P1DT2H"],
-    ["Bob", 25, false, "2025-01-15", "2025-01-15T09:00:00", "09:00:00", "PT30M"],
+    ["Bob", 25, false, "2025-01-15", "2025-01-15 09:00:00", "09:00:00", "PT30M"],
   ];
   const b64 = await encodeJsonDeflateBase64(payload);
   assert.equal(typeof b64, "string");

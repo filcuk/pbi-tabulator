@@ -36,7 +36,7 @@ const sample = normalizeTable({
         rate: 2.75,
         active: false,
         amount: 9.5,
-        updated: "2025-01-15T09:00:00",
+        updated: "2025-01-15 09:00:00",
       },
     },
   ],
