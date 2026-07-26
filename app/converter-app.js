@@ -182,6 +182,7 @@ export function initConverterApp({ root = document } = {}) {
   const outputCodeWrap = root.querySelector("#output-code-wrap");
   const outputTableEl = root.querySelector("#output-table");
   const configSection = root.querySelector("#config-section");
+  const configHint = root.querySelector(".converter-config-hint");
   const configColumnsEl = root.querySelector("#config-columns");
 
   /** @type {import("./convert/model.js").TableModel} */
@@ -255,6 +256,8 @@ export function initConverterApp({ root = document } = {}) {
     onChange({ value, source: changeSource }) {
       if (changeSource === "init") return;
       mDialect = value;
+      updatePaneVisibility();
+      renderConfigUi();
       void runConvert();
     },
   });
@@ -326,6 +329,14 @@ export function initConverterApp({ root = document } = {}) {
 
   function configVisible() {
     return configLang() !== null;
+  }
+
+  /** Column output types apply to DAX and typed M dialects (#table / Binary.FromText), not FromRecords. */
+  function typesConfigVisible() {
+    const lang = configLang();
+    if (!lang) return false;
+    if (lang === "m" && mDialect === "from-records") return false;
+    return true;
   }
 
   /**
@@ -406,7 +417,7 @@ export function initConverterApp({ root = document } = {}) {
     if (!configColumnsEl) return;
 
     const lang = configLang();
-    if (!lang) {
+    if (!lang || !typesConfigVisible()) {
       configColumnsEl.replaceChildren();
       return;
     }
@@ -520,11 +531,18 @@ export function initConverterApp({ root = document } = {}) {
   function updatePaneVisibility() {
     const sourceIsTable = source === "tabular";
     const targetIsTable = target === "tabular";
+    const showTypes = typesConfigVisible();
     setHidden(inputTabularWrap, !sourceIsTable);
     setHidden(inputCodeWrap, sourceIsTable);
     setHidden(outputTabularWrap, !targetIsTable);
     setHidden(outputCodeWrap, targetIsTable);
     setHidden(configSection, !configVisible());
+    setHidden(configColumnsEl, !showTypes);
+    if (configHint) {
+      configHint.textContent = showTypes
+        ? "Configure output style and column types."
+        : "Configure output style.";
+    }
 
     const inputLang = prismLanguage(source);
     if (inputLang) inputCode?.setLanguage(inputLang);
@@ -660,7 +678,9 @@ export function initConverterApp({ root = document } = {}) {
       } else if (target === "dax" || target === "m") {
         const dialect = target === "dax" ? daxDialect : mDialect;
         const typed =
-          source === "tabular" ? modelWithOutputTypes(model, target) : model;
+          source === "tabular" && typesConfigVisible()
+            ? modelWithOutputTypes(model, target)
+            : model;
         const code = await generate(target, dialect, typed, generateOptions());
         if (gen !== convertGen) return;
         outputCode?.setSource(String(await code));
