@@ -55,9 +55,12 @@ export function generateM(table, dialect = "table", options = {}) {
 
 /**
  * @param {import("./model.js").TableModel} model
- * @param {{ multiline?: boolean, alignCommas?: boolean }} [opts]
+ * @param {{ multiline?: boolean, alignCommas?: boolean, blockIndent?: string }} [opts]
  */
-function typeTableClause(model, { multiline = false, alignCommas = false } = {}) {
+function typeTableClause(
+  model,
+  { multiline = false, alignCommas = false, blockIndent = "    " } = {}
+) {
   const parts = model.columns.map((col) => [
     formatMFieldName(col.label),
     effectiveMType(col),
@@ -70,16 +73,14 @@ function typeTableClause(model, { multiline = false, alignCommas = false } = {})
     return `type table [${parts.map((p) => p.join(" = ")).join(", ")}]`;
   }
 
-  if (alignCommas) {
-    const aligned = joinRows(parts, { align: true, separator: " = " });
-    return `type table [
-        ${aligned.join(",\n        ")}
-    ]`;
-  }
+  const fieldIndent = `${blockIndent}${blockIndent}`;
+  const fields = alignCommas
+    ? joinRows(parts, { align: true, separator: " = " })
+    : parts.map((p) => p.join(" = "));
 
   return `type table [
-        ${parts.map((p) => p.join(" = ")).join(",\n        ")}
-    ]`;
+${fieldIndent}${fields.join(`,\n${fieldIndent}`)}
+${blockIndent}]`;
 }
 
 /**
@@ -157,6 +158,7 @@ async function generateBinaryFromText(model, opts) {
   const typeClause = typeTableClause(model, {
     multiline: !opts.minimised,
     alignCommas: opts.alignCommas && !opts.minimised,
+    blockIndent: "        ",
   });
 
   return `let
