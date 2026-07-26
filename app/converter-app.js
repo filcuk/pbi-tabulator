@@ -790,15 +790,11 @@ export function initConverterApp({ root = document } = {}) {
           model = normalizeTable(await parse(source, text));
         }
       }
-      clearError();
-    } catch (err) {
-      showError(err instanceof Error ? err.message : String(err));
-      syncing = true;
-      sourceControl?.selectValue(source, { emit: false });
-      syncing = false;
-      return;
+    } catch {
+      // Keep the last good model so the user can leave invalid code.
     }
 
+    clearError();
     source = next;
     if (source === target) {
       target = fallbackLang(source);
