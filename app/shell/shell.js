@@ -37,10 +37,12 @@ function bindGlobalErrorHandlers(onError) {
  * @param {string} [options.appUrl] Public site URL — entries matching this are omitted from “also see”
  * @param {string} [options.brandUrl]
  * @param {string} [options.brandName]
- * @param {false | { label: string, url: string, icon?: string, iconLight?: string, iconDark?: string }[]} [options.alsoSee]
- *   Related-app links for the footer “also see” menu. `false` or `[]` hides it
- *   when there is no remote list.
- * @param {string} [options.alsoSeeUrl] Remote JSON URL (array of link objects). Empty skips fetch.
+ * @param {false | object[]} [options.alsoSee]
+ *   Related-app links for the footer “also see” menu (`{ topic, items }` and/or
+ *   flat links). `false` or `[]` hides it when there is no remote list.
+ * @param {string} [options.alsoSeeUrl] Remote JSON URL. Empty skips fetch.
+ * @param {string[] | false | null} [options.alsoSeeTopics]
+ *   Topic whitelist (case-insensitive). Omit / `null` / `false` → all topics.
  * @param {string} [options.appVersion] Override app SemVer (default from `app/version.js`)
  * @param {string} [options.templateVersion] Override template SemVer (default from `app/version.js`)
  * @param {false | import("./page-nav.js").PageNavOptions} [options.pageNav]
@@ -55,14 +57,22 @@ export function initShell(options = {}) {
     onError,
     alsoSeeUrl,
     alsoSee,
+    alsoSeeTopics,
     appUrl,
     ...shellOptions
   } = options;
-  renderPageShell({ ...shellOptions, alsoSee, alsoSeeUrl, appUrl, pageNav });
+  renderPageShell({
+    ...shellOptions,
+    alsoSee,
+    alsoSeeUrl,
+    alsoSeeTopics,
+    appUrl,
+    pageNav,
+  });
   initIcons();
   initExternalLinks(document);
   initHeadingLinks(document);
-  void initAlsoSee(document, { alsoSeeUrl, appUrl });
+  void initAlsoSee(document, { alsoSeeUrl, appUrl, alsoSeeTopics });
   initTheme();
   initThemeToggle(document.getElementById("theme-toggle"));
   initStickyChrome();
