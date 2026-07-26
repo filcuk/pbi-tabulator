@@ -115,7 +115,9 @@ export function initPopupMenu({
     setHidden(menuEl, true);
     clearFixedPosition();
     toggleEl?.setAttribute("aria-expanded", "false");
-    toggleEl?.focus();
+    if (toggleEl?.isConnected) {
+      toggleEl.focus();
+    }
   }
 
   function openMenu() {
@@ -132,13 +134,24 @@ export function initPopupMenu({
   }
 
   function activateItem(item) {
-    if (closeOnSelect) closeMenu();
+    // Close the panel before onSelect so handlers can tear down the DOM, but
+    // defer focus restore until afterward — focusing a trigger that is about
+    // to be destroyed (e.g. remove column) would flash its tooltip.
+    if (closeOnSelect) {
+      isOpen = false;
+      setHidden(menuEl, true);
+      clearFixedPosition();
+      toggleEl?.setAttribute("aria-expanded", "false");
+    }
     onSelect?.({
       containerEl,
       item,
       value: item.dataset.value,
       label: menuItemLabel(item),
     });
+    if (closeOnSelect && toggleEl?.isConnected) {
+      toggleEl.focus();
+    }
   }
 
   function onToggleClick(e) {
@@ -146,30 +159,26 @@ export function initPopupMenu({
     toggleMenu();
   }
 
-  function isLinkItem(item) {
-    return (
-      item instanceof HTMLAnchorElement &&
-      Boolean(item.getAttribute("href"))
-    );
-  }
-
   function onMenuClick(e) {
     const item = e.target.closest(itemSelector);
     if (!item || !menuEl.contains(item)) return;
-    // Real links: let the browser handle navigation (left, ctrl/cmd-click).
-    // Middle-click uses auxclick and does not reach here in modern browsers.
-    if (isLinkItem(item)) {
-      if (closeOnSelect) closeMenu();
-      return;
-    }
-    activateItem(item);
-  }
 
-  function onMenuAuxClick(e) {
-    if (e.button !== 1) return;
-    const item = e.target.closest(itemSelector);
-    if (!item || !menuEl.contains(item) || !isLinkItem(item)) return;
-    if (closeOnSelect) closeMenu();
+    if (item instanceof HTMLAnchorElement) {
+      // Modified clicks: let the browser open a new tab; only close the menu.
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+        if (closeOnSelect) {
+          isOpen = false;
+          setHidden(menuEl, true);
+          clearFixedPosition();
+          toggleEl?.setAttribute("aria-expanded", "false");
+        }
+        return;
+      }
+      // Plain primary click: onSelect handles navigation (e.g. same window).
+      e.preventDefault();
+    }
+
+    activateItem(item);
   }
 
   function onMenuKeydown(e) {
@@ -200,12 +209,6 @@ export function initPopupMenu({
       const item = document.activeElement?.closest?.(itemSelector);
       if (!item || !menuEl.contains(item)) return;
       e.preventDefault();
-      // Enter/Space preventDefault blocks native link activation — open explicitly.
-      if (isLinkItem(item)) {
-        if (closeOnSelect) closeMenu();
-        window.open(item.href, "_blank", "noopener,noreferrer");
-        return;
-      }
       activateItem(item);
     }
   }
@@ -216,7 +219,6 @@ export function initPopupMenu({
 
   toggleEl?.addEventListener("click", onToggleClick);
   menuEl.addEventListener("click", onMenuClick);
-  menuEl.addEventListener("auxclick", onMenuAuxClick);
   menuEl.addEventListener("keydown", onMenuKeydown);
 
   if (fixed) {
@@ -242,7 +244,6 @@ export function initPopupMenu({
     destroy() {
       toggleEl?.removeEventListener("click", onToggleClick);
       menuEl.removeEventListener("click", onMenuClick);
-      menuEl.removeEventListener("auxclick", onMenuAuxClick);
       menuEl.removeEventListener("keydown", onMenuKeydown);
       if (fixed) {
         window.removeEventListener("scroll", onViewportChange, true);
