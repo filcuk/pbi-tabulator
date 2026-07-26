@@ -296,7 +296,7 @@ Component CSS lives under `app/css/` (imported via `styles.css`). Match a compon
 | **Tabs** | `.tabs` block with `.tabs-list` / `.tabs-tab` and `.tabs-panel` content; behaviour from [`app/tabs.js`](app/tabs.js). |
 | **Pagination** | In-page page navigation with prev/next and numbered pages; no URL change. [`app/pagination.js`](app/pagination.js). |
 | **Table** | Data table with striped layout, sortable columns, and optional row selection. [`app/table.js`](app/table.js). |
-| **Tabular input** | Editable typed grid (text / number / logical); add/remove/reset; Excel/TSV paste with type detection. [`app/components/tabular-input.js`](app/components/tabular-input.js). |
+| **Tabular input** | Editable typed grid (text / number / logical); add/remove/reset; Excel/TSV paste with type detection; centered canvas breakout when wide. [`app/components/tabular-input.js`](app/components/tabular-input.js). |
 | **Page navigation** | Fixed `#page-nav`: always-visible jump up/down (shared progress ring), section links on hover. Group nested headings under `data-page-nav-tier` parents. [`app/page-nav.js`](app/page-nav.js). |
 | **Dialogs** | Accessible modal: backdrop, focus trap, Escape, focus restore. Markup uses `.modal` / `.modal-panel`; behaviour from [`app/dialog.js`](app/dialog.js). |
 | **Heading links** | Hover a `main h2[id]` heading to reveal a link icon; tooltip says “Get link”, then “Copied!” on success. [`app/heading-link.js`](app/heading-link.js). |
@@ -1653,6 +1653,12 @@ Editable data grid for collecting rows of typed values. Mount an empty `.tabular
 - Header **reset** opens a size-picker popover next to the button (up to **8×8**); choosing a size replaces the table with a blank text-column grid. Programmatic `reset({ columnCount, rowCount })` skips the picker (defaults to **3×2**).
 - Icon chrome uses `data-tooltip` (add/remove row, add column, reset, column menu trigger). Requires `initTooltips()` via `initShell()`.
 
+**Width / canvas breakout**
+
+- When the grid is wider than the page body, it **breaks out centered** up to the canvas (`100vw` minus page padding) instead of scrolling inside the body.
+- A toolbar toggle (`fullscreen` / `fullscreen-exit`) appears **only while overflowing**; use it to constrain back to the body (horizontal scroll) or expand again. Default is breakout on.
+- Opt out via `breakout: false` or `data-tabular-input-breakout="false"` (initial preference). `setBreakoutEnabled(boolean)` / `getBreakoutEnabled()` are also available.
+
 **Paste**
 
 - Paste Excel/TSV (`text/plain` with tabs or multiple lines) while focus is in the grid.
@@ -1697,14 +1703,16 @@ grid?.reset(); // blank 3×2; no size picker
 grid?.reset({ columnCount: 4, rowCount: 5 });
 grid?.setData({ columns: [...], rows: [...] });
 grid?.setDisabled(true);
+grid?.setBreakoutEnabled(false);
+grid?.getBreakoutEnabled();
 grid?.destroy();
 
 initTabularInputs(document); // all `.tabular-input` roots
 ```
 
-`data-tabular-input-disabled` mirrors the `disabled` option. `onChange` `source` values include `"input"`, `"add-row"`, `"remove-row"`, `"move-row"`, `"add-column"`, `"remove-column"`, `"rename"`, `"type-change"`, `"paste"`, `"reset"`, and `"api"`.
+`data-tabular-input-disabled` mirrors the `disabled` option. `data-tabular-input-breakout` mirrors the `breakout` option (default on). `onChange` `source` values include `"input"`, `"add-row"`, `"remove-row"`, `"move-row"`, `"add-column"`, `"remove-column"`, `"rename"`, `"type-change"`, `"paste"`, `"reset"`, and `"api"`.
 
-Icons used: `plus`, `delete` (reset), `remove` (row/column), `type-text`, `type-number`, `type-logical`, `chevron-down` — defined in [`app/utils/icons.js`](app/utils/icons.js).
+Icons used: `plus`, `delete` (reset), `remove` (row/column), `type-text`, `type-number`, `type-logical`, `chevron-down`, `fullscreen`, `fullscreen-exit` — defined in [`app/utils/icons.js`](app/utils/icons.js).
 
 ### Page navigation
 

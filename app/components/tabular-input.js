@@ -12,12 +12,17 @@
  *     columns: [{ id?, label, type }],
  *     rows: [{ id?, cells: { [columnId]: value } }],
  *     disabled?,
+ *     breakout?, // default true — allow centered canvas breakout when wide
  *     onChange?,
  *   })
  *
  * Layout: row delete on the right (trailing column); column menu (type +
  * remove) on the column label; Add column in the header after the last
  * column; Add row in a footer row under the data.
+ *
+ * Width: when columns exceed the page body, the grid can break out
+ * centered up to the canvas (viewport minus page padding). A toggle
+ * appears only while overflowing so the user can constrain to body width.
  *
  * Paste: Excel/TSV clipboard paste expands from the focused body cell
  * (fallback top-left), overwrites that rectangle, auto-detects column types.
@@ -268,12 +273,28 @@ function normalizeRows(rows, columns, nextId) {
  */
 export function initTabularInput(
   rootEl,
-  { columns: columnsOption, rows: rowsOption, disabled, onChange } = {}
+  {
+    columns: columnsOption,
+    rows: rowsOption,
+    disabled,
+    breakout: breakoutOption,
+    onChange,
+  } = {}
 ) {
   if (!rootEl) return null;
 
   const nextId = createIdFactory();
   let isDisabled = resolveDisabled(rootEl, disabled);
+  /** User preference: allow centered canvas breakout when the grid overflows. */
+  let breakoutEnabled =
+    typeof breakoutOption === "boolean"
+      ? breakoutOption
+      : (parseBooleanAttr(rootEl.dataset.tabularInputBreakout) ?? true);
+  /** Whether content is wider than the page-body slot. */
+  let isOverflowing = false;
+  /** @type {number | null} */
+  let breakoutSyncFrame = null;
+
   /** @type {Column[]} */
   let columns = normalizeColumns(columnsOption, nextId);
   /** @type {Row[]} */
@@ -294,6 +315,19 @@ export function initTabularInput(
   const tbodyEl = document.createElement("tbody");
   tableEl.append(theadEl, tbodyEl);
   wrapEl.append(tableEl);
+
+  const breakoutBtn = document.createElement("button");
+  breakoutBtn.type = "button";
+  breakoutBtn.className = "btn btn-icon tabular-input-breakout-toggle";
+  breakoutBtn.setAttribute("aria-pressed", "true");
+  breakoutBtn.append(
+    createIcon("fullscreen-exit", { className: "btn-icon-svg" })
+  );
+
+  const breakoutBar = document.createElement("div");
+  breakoutBar.className = "tabular-input-breakout-bar";
+  breakoutBar.append(breakoutBtn);
+  setHidden(breakoutBar, true);
 
   const addRowBtn = document.createElement("button");
   addRowBtn.type = "button";
@@ -370,7 +404,7 @@ export function initTabularInput(
   liveEl.className = "tabular-input-live";
   liveEl.setAttribute("aria-live", "polite");
 
-  rootEl.replaceChildren(wrapEl, liveEl);
+  rootEl.replaceChildren(breakoutBar, wrapEl, liveEl);
   rootEl.classList.add("tabular-input");
 
   function setSizePickerHighlight(cols, rows) {
@@ -557,6 +591,95 @@ export function initTabularInput(
     addRowBtn.disabled = isDisabled;
     addColBtn.disabled = isDisabled;
     resetBtn.disabled = isDisabled;
+    breakoutBtn.disabled = isDisabled;
+  }
+
+  function getSlotWidth() {
+    const slot = rootEl.parentElement;
+    return slot?.clientWidth ?? rootEl.clientWidth;
+  }
+
+  function getCanvasMaxWidth() {
+    const main = rootEl.closest("main");
+    let pad = 0;
+    if (main) {
+      const style = getComputedStyle(main);
+      pad =
+        (parseFloat(style.paddingLeft) || 0) +
+        (parseFloat(style.paddingRight) || 0);
+    }
+    if (!pad) {
+      const probe = document.createElement("div");
+      probe.style.cssText =
+        "position:absolute;visibility:hidden;pointer-events:none;width:var(--page-padding-x)";
+      document.body.append(probe);
+      pad = probe.offsetWidth * 2;
+      probe.remove();
+    }
+    return Math.max(0, document.documentElement.clientWidth - pad);
+  }
+
+  function syncBreakoutButton() {
+    const active = isOverflowing && breakoutEnabled;
+    breakoutBtn.setAttribute("aria-pressed", active ? "true" : "false");
+    const label = active ? "Fit to page width" : "Expand to canvas width";
+    breakoutBtn.setAttribute("aria-label", label);
+    breakoutBtn.dataset.tooltip = label;
+    const iconId = active ? "fullscreen-exit" : "fullscreen";
+    breakoutBtn.replaceChildren(
+      createIcon(iconId, { className: "btn-icon-svg" })
+    );
+  }
+
+  function getWrapBorderX() {
+    const style = getComputedStyle(wrapEl);
+    return (
+      (parseFloat(style.borderLeftWidth) || 0) +
+      (parseFloat(style.borderRightWidth) || 0)
+    );
+  }
+
+  function clearBreakoutStyles() {
+    rootEl.classList.remove("tabular-input--breakout");
+    rootEl.style.removeProperty("--tabular-breakout-width");
+    rootEl.style.removeProperty("width");
+    rootEl.style.removeProperty("max-width");
+    rootEl.style.removeProperty("margin-left");
+    wrapEl.style.removeProperty("overflow-x");
+  }
+
+  function syncBreakoutLayout() {
+    breakoutSyncFrame = null;
+
+    // Measure against the page-body slot without breakout applied.
+    clearBreakoutStyles();
+    const slotWidth = getSlotWidth();
+    const contentWidth = Math.max(tableEl.scrollWidth, wrapEl.scrollWidth);
+    isOverflowing = contentWidth > slotWidth + 1;
+
+    setHidden(breakoutBar, !isOverflowing);
+    syncBreakoutButton();
+
+    if (!isOverflowing || !breakoutEnabled) return;
+
+    // Include .table-wrap borders so the table fits without a 1–2px scrollbar.
+    const needed = Math.ceil(contentWidth + getWrapBorderX());
+    const canvasMax = getCanvasMaxWidth();
+    const width = Math.min(needed, canvasMax);
+    rootEl.style.setProperty("--tabular-breakout-width", `${width}px`);
+    rootEl.style.width = `${width}px`;
+    rootEl.style.maxWidth = `calc(100vw - 2 * var(--page-padding-x))`;
+    rootEl.style.marginLeft = `calc((100% - ${width}px) / 2)`;
+    rootEl.classList.add("tabular-input--breakout");
+    // Hide residual subpixel overflow when we sized to fit; keep scroll if clamped.
+    wrapEl.style.overflowX = needed <= canvasMax ? "hidden" : "";
+  }
+
+  function scheduleBreakoutSync() {
+    if (breakoutSyncFrame !== null) return;
+    breakoutSyncFrame = requestAnimationFrame(() => {
+      syncBreakoutLayout();
+    });
   }
 
   /**
@@ -1017,6 +1140,7 @@ export function initTabularInput(
     });
 
     tbodyEl.append(createAddRowFooter());
+    scheduleBreakoutSync();
   }
 
   function addRow({ emitEvent = true, source = "add-row" } = {}) {
@@ -1476,11 +1600,35 @@ export function initTabularInput(
     }
   }
 
+  function onBreakoutClick() {
+    if (isDisabled || !isOverflowing) return;
+    breakoutEnabled = !breakoutEnabled;
+    closeTooltip();
+    syncBreakoutLayout();
+  }
+
+  function onBreakoutViewportChange() {
+    scheduleBreakoutSync();
+  }
+
+  /** Slot width only — avoid observing the grid itself (breakout would loop). */
+  const breakoutResizeObserver =
+    typeof ResizeObserver === "function"
+      ? new ResizeObserver(() => {
+          scheduleBreakoutSync();
+        })
+      : null;
+  if (rootEl.parentElement) {
+    breakoutResizeObserver?.observe(rootEl.parentElement);
+  }
+
   addRowBtn.addEventListener("click", onAddRowClick);
   addColBtn.addEventListener("click", onAddColClick);
   resetBtn.addEventListener("click", onResetClick);
+  breakoutBtn.addEventListener("click", onBreakoutClick);
   rootEl.addEventListener("paste", onPaste);
   rootEl.addEventListener("keydown", onRootKeydown);
+  window.addEventListener("resize", onBreakoutViewportChange);
 
   render();
 
@@ -1541,21 +1689,40 @@ export function initTabularInput(
       isDisabled = Boolean(next);
       render();
     },
+    setBreakoutEnabled(next) {
+      breakoutEnabled = Boolean(next);
+      syncBreakoutLayout();
+    },
+    getBreakoutEnabled() {
+      return breakoutEnabled;
+    },
     destroy() {
       for (const menu of typeMenus) menu.destroy();
       typeMenus = [];
+      if (breakoutSyncFrame !== null) {
+        cancelAnimationFrame(breakoutSyncFrame);
+        breakoutSyncFrame = null;
+      }
+      breakoutResizeObserver?.disconnect();
       addRowBtn.removeEventListener("click", onAddRowClick);
       addColBtn.removeEventListener("click", onAddColClick);
       resetBtn.removeEventListener("click", onResetClick);
+      breakoutBtn.removeEventListener("click", onBreakoutClick);
       rootEl.removeEventListener("paste", onPaste);
       rootEl.removeEventListener("keydown", onRootKeydown);
+      window.removeEventListener("resize", onBreakoutViewportChange);
       window.removeEventListener("scroll", onSizePopoverViewportChange, true);
       window.removeEventListener("resize", onSizePopoverViewportChange);
       removeSizePopoverOutside();
       removeSizePopoverEscape();
       closeSizePopover();
+      clearBreakoutStyles();
       rootEl.replaceChildren();
-      rootEl.classList.remove("tabular-input", "tabular-input--disabled");
+      rootEl.classList.remove(
+        "tabular-input",
+        "tabular-input--disabled",
+        "tabular-input--breakout"
+      );
     },
   };
 }

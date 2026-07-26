@@ -6,8 +6,46 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  width: 100%;
   max-width: 100%;
   min-width: 0;
+  box-sizing: border-box;
+}
+
+/* Centered canvas breakout when columns exceed the page body width.
+   Needs ≥2 classes so it wins over `.converter-pane .tabular-input { width: 100% }`. */
+.tabular-input.tabular-input--breakout {
+  width: min(
+    var(--tabular-breakout-width),
+    calc(100vw - 2 * var(--page-padding-x))
+  );
+  max-width: calc(100vw - 2 * var(--page-padding-x));
+  margin-left: calc(
+    (
+        100% -
+          min(
+            var(--tabular-breakout-width),
+            calc(100vw - 2 * var(--page-padding-x))
+          )
+      ) /
+      2
+  );
+}
+
+.tabular-input-breakout-bar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  min-height: 0;
+}
+
+.tabular-input-breakout-toggle {
+  width: calc(var(--control-height) - 0.25rem);
+  min-width: calc(var(--control-height) - 0.25rem);
+  height: calc(var(--control-height) - 0.25rem);
+  min-height: calc(var(--control-height) - 0.25rem);
+  padding: 0;
+  box-sizing: border-box;
 }
 
 .tabular-input-wrap {

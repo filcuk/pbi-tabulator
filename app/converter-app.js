@@ -432,7 +432,7 @@ export function initConverterApp({ root = document } = {}) {
 
       if (cfg.locked) {
         lock.type = "button";
-        lock.dataset.tooltip = "Click for auto";
+        lock.dataset.tooltip = "Click for auto-detect";
         lock.dataset.tooltipPosition = "top";
         lock.setAttribute(
           "aria-label",
