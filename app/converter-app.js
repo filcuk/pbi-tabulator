@@ -399,10 +399,34 @@ export function initConverterApp({ root = document } = {}) {
         void runConvert();
       });
 
-      const lock = document.createElement("span");
+      const lock = document.createElement(cfg.locked ? "button" : "span");
       lock.className = "converter-config-lock";
       lock.dataset.locked = cfg.locked ? "true" : "false";
       lock.textContent = cfg.locked ? "Locked" : "Auto";
+
+      if (cfg.locked) {
+        lock.type = "button";
+        lock.dataset.tooltip =
+          "Click for auto";
+        lock.dataset.tooltipPosition = "top";
+        lock.setAttribute(
+          "aria-label",
+          `Unlock output type for ${col.label || col.id}`
+        );
+        lock.addEventListener("click", () => {
+          const suggested = suggestOutputType(
+            lang,
+            col.type,
+            columnValues(col)
+          );
+          typeConfig.set(col.id, {
+            outputType: suggested,
+            locked: false,
+          });
+          renderConfigUi();
+          void runConvert();
+        });
+      }
 
       row.append(name, select, lock);
       frag.append(row);
