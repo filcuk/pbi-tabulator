@@ -14,7 +14,7 @@ import { formatMFieldName, formatMLiteral, quoteString } from "./scan.js";
 import { encodeJsonDeflateBase64 } from "./binary.js";
 
 /**
- * @typedef {{ alignCommas?: boolean }} GenerateOptions
+ * @typedef {{ alignCommas?: boolean, minimised?: boolean }} GenerateOptions
  */
 
 /**
@@ -36,7 +36,10 @@ export function generateM(table, dialect = "table", options = {}) {
     throw new ConvertError("Cannot generate M from a table with no columns");
   }
 
-  const opts = { alignCommas: Boolean(options.alignCommas) };
+  const opts = {
+    alignCommas: Boolean(options.alignCommas),
+    minimised: Boolean(options.minimised),
+  };
 
   switch (dialect) {
     case "table":
@@ -99,7 +102,10 @@ function generateHashTable(model, opts) {
       : `{\n        ${rows.join(",\n        ")}\n    }`;
 
   return `#table(
-    ${typeTableClause(model, { multiline: true, alignCommas: opts.alignCommas })},
+    ${typeTableClause(model, {
+      multiline: !opts.minimised,
+      alignCommas: opts.alignCommas && !opts.minimised,
+    })},
     ${rowsBlock}
 )`;
 }
@@ -149,8 +155,8 @@ async function generateBinaryFromText(model, opts) {
 
   const b64 = await encodeJsonDeflateBase64(jsonRows);
   const typeClause = typeTableClause(model, {
-    multiline: true,
-    alignCommas: opts.alignCommas,
+    multiline: !opts.minimised,
+    alignCommas: opts.alignCommas && !opts.minimised,
   });
 
   return `let

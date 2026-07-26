@@ -44,3 +44,17 @@ test("generateDax DATATABLE aligns commas when requested", () => {
   assert.match(aligned, /"Name", STRING/);
   assert.match(aligned, /"N"   , INTEGER/);
 });
+
+test("generateDax DATATABLE minimised puts columns on one line", () => {
+  const table = normalizeTable({
+    columns: [
+      { id: "name", label: "Name", type: "text", outputType: "STRING" },
+      { id: "n", label: "N", type: "number", outputType: "INTEGER" },
+    ],
+    rows: [{ cells: { name: "Alice", n: 30 } }],
+  });
+
+  const code = generateDax(table, "datatable", { minimised: true });
+  assert.match(code, /"Name", STRING, "N", INTEGER/);
+  assert.doesNotMatch(code, /"Name", STRING,\n/);
+});

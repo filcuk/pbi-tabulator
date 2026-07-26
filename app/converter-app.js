@@ -181,6 +181,7 @@ export function initConverterApp({ root = document } = {}) {
   let daxDialect = "datatable";
   let mDialect = "table";
   let alignCommas = false;
+  let minimised = false;
   let syncing = false;
   let convertGen = 0;
   /** @type {ReturnType<typeof setTimeout> | undefined} */
@@ -258,6 +259,20 @@ export function initConverterApp({ root = document } = {}) {
       void runConvert();
     },
   });
+
+  initToggle(root.querySelector("#minimised-output-toggle"), {
+    defaultChecked: false,
+    onChange({ checked, source: changeSource }) {
+      if (changeSource === "init") return;
+      minimised = checked;
+      void runConvert();
+    },
+  });
+
+  /** @returns {{ alignCommas: boolean, minimised: boolean }} */
+  function generateOptions() {
+    return { alignCommas, minimised };
+  }
 
   root.querySelector("#input-code")?.addEventListener(
     "input",
@@ -547,7 +562,7 @@ export function initConverterApp({ root = document } = {}) {
         inputTabular?.setData(model, { emitEvent: false });
       } else {
         const dialect = source === "dax" ? daxDialect : mDialect;
-        const code = await generate(source, dialect, model, { alignCommas });
+        const code = await generate(source, dialect, model, generateOptions());
         inputCode?.setSource(String(await code));
       }
     } catch (err) {
@@ -576,7 +591,7 @@ export function initConverterApp({ root = document } = {}) {
           inputTabular?.setData(model, { emitEvent: false });
         } else {
           const dialect = source === "dax" ? daxDialect : mDialect;
-          const code = await generate(source, dialect, model, { alignCommas });
+          const code = await generate(source, dialect, model, generateOptions());
           inputCode?.setSource(String(await code));
         }
       } catch (err) {
@@ -624,7 +639,7 @@ export function initConverterApp({ root = document } = {}) {
         const dialect = target === "dax" ? daxDialect : mDialect;
         const typed =
           source === "tabular" ? modelWithOutputTypes(model, target) : model;
-        const code = await generate(target, dialect, typed, { alignCommas });
+        const code = await generate(target, dialect, typed, generateOptions());
         if (gen !== convertGen) return;
         outputCode?.setSource(String(await code));
       }

@@ -13,7 +13,7 @@ import {
 import { formatDaxLiteral, quoteString } from "./scan.js";
 
 /**
- * @typedef {{ alignCommas?: boolean }} GenerateOptions
+ * @typedef {{ alignCommas?: boolean, minimised?: boolean }} GenerateOptions
  */
 
 /**
@@ -34,7 +34,10 @@ export function generateDax(table, dialect = "datatable", options = {}) {
     throw new ConvertError("Cannot generate DAX from a table with no columns");
   }
 
-  const opts = { alignCommas: Boolean(options.alignCommas) };
+  const opts = {
+    alignCommas: Boolean(options.alignCommas),
+    minimised: Boolean(options.minimised),
+  };
 
   switch (dialect) {
     case "datatable":
@@ -61,7 +64,10 @@ function generateDatatable(model, opts) {
     quoteString(col.label),
     effectiveDaxType(col),
   ]);
-  const headerParts = joinRows(headerRows, { align: opts.alignCommas });
+  const headerParts = joinRows(headerRows, {
+    align: opts.alignCommas && !opts.minimised,
+  });
+  const headerSep = opts.minimised ? ", " : ",\n    ";
 
   const cellRows = model.rows.map((row) =>
     model.columns.map((col) =>
@@ -78,7 +84,7 @@ function generateDatatable(model, opts) {
       : `{\n        ${rowParts.join(",\n        ")}\n    }`;
 
   return `DATATABLE(
-    ${headerParts.join(",\n    ")},
+    ${headerParts.join(headerSep)},
     ${rowsBlock}
 )`;
 }
@@ -101,9 +107,10 @@ function generateConstructor(model, opts) {
     quoteString(col.label),
     `[Value${index + 1}]`,
   ]);
-  const selectCols = joinRows(selectRows, { align: opts.alignCommas }).join(
-    ",\n    "
-  );
+  const selectSep = opts.minimised ? ", " : ",\n    ";
+  const selectCols = joinRows(selectRows, {
+    align: opts.alignCommas && !opts.minimised,
+  }).join(selectSep);
 
   return `SELECTCOLUMNS(
     {
