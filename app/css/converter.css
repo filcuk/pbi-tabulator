@@ -64,10 +64,19 @@
   box-sizing: border-box;
 }
 
+.converter-pane-action [data-icon] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  flex-shrink: 0;
+}
+
 .converter-pane-action .btn-icon-svg {
   width: 1rem;
   height: 1rem;
   flex-shrink: 0;
+  display: block;
 }
 
 .converter-pane .code-block,
