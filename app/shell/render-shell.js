@@ -137,13 +137,13 @@ export function renderAlsoSeeMarkup(links) {
         : "";
 
       return `<li role="none">
-          <button type="button" class="dropdown-menu-item" role="menuitem" data-url="${escapeAttr(link.url)}" data-value="${index}">
+          <a href="${escapeAttr(link.url)}" target="_blank" rel="noopener noreferrer" class="dropdown-menu-item" role="menuitem" data-value="${index}" data-no-external-icon>
             ${iconMarkup}
             <span class="dropdown-menu-item-text">
               <span class="dropdown-menu-item-label">${escapeText(link.label)}</span>
               ${subtitleMarkup}
             </span>
-          </button>
+          </a>
         </li>`;
     })
     .join("");

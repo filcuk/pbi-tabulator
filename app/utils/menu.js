@@ -146,10 +146,30 @@ export function initPopupMenu({
     toggleMenu();
   }
 
+  function isLinkItem(item) {
+    return (
+      item instanceof HTMLAnchorElement &&
+      Boolean(item.getAttribute("href"))
+    );
+  }
+
   function onMenuClick(e) {
     const item = e.target.closest(itemSelector);
-    if (!item) return;
+    if (!item || !menuEl.contains(item)) return;
+    // Real links: let the browser handle navigation (left, ctrl/cmd-click).
+    // Middle-click uses auxclick and does not reach here in modern browsers.
+    if (isLinkItem(item)) {
+      if (closeOnSelect) closeMenu();
+      return;
+    }
     activateItem(item);
+  }
+
+  function onMenuAuxClick(e) {
+    if (e.button !== 1) return;
+    const item = e.target.closest(itemSelector);
+    if (!item || !menuEl.contains(item) || !isLinkItem(item)) return;
+    if (closeOnSelect) closeMenu();
   }
 
   function onMenuKeydown(e) {
@@ -180,6 +200,12 @@ export function initPopupMenu({
       const item = document.activeElement?.closest?.(itemSelector);
       if (!item || !menuEl.contains(item)) return;
       e.preventDefault();
+      // Enter/Space preventDefault blocks native link activation — open explicitly.
+      if (isLinkItem(item)) {
+        if (closeOnSelect) closeMenu();
+        window.open(item.href, "_blank", "noopener,noreferrer");
+        return;
+      }
       activateItem(item);
     }
   }
@@ -190,6 +216,7 @@ export function initPopupMenu({
 
   toggleEl?.addEventListener("click", onToggleClick);
   menuEl.addEventListener("click", onMenuClick);
+  menuEl.addEventListener("auxclick", onMenuAuxClick);
   menuEl.addEventListener("keydown", onMenuKeydown);
 
   if (fixed) {
@@ -215,6 +242,7 @@ export function initPopupMenu({
     destroy() {
       toggleEl?.removeEventListener("click", onToggleClick);
       menuEl.removeEventListener("click", onMenuClick);
+      menuEl.removeEventListener("auxclick", onMenuAuxClick);
       menuEl.removeEventListener("keydown", onMenuKeydown);
       if (fixed) {
         window.removeEventListener("scroll", onViewportChange, true);

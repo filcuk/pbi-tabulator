@@ -71,6 +71,16 @@
   cursor: pointer;
 }
 
+a.combo-menu-item,
+a.dropdown-menu-item,
+a.combo-menu-item:hover,
+a.dropdown-menu-item:hover,
+a.combo-menu-item:focus-visible,
+a.dropdown-menu-item:focus-visible {
+  color: var(--text);
+  text-decoration: none;
+}
+
 .dropdown-menu-item:has(.dropdown-menu-item-subtitle) {
   white-space: normal;
 }
