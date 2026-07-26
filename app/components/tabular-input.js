@@ -185,6 +185,95 @@ export function parseClipboardTable(text) {
 }
 
 /**
+ * Format a cell value for Excel-friendly TSV.
+ * @param {unknown} value
+ * @param {ColumnType} [type]
+ */
+export function formatCellForClipboard(value, type) {
+  if (value === null || value === undefined) return "";
+  if (type === "logical" || typeof value === "boolean") {
+    return value ? "true" : "false";
+  }
+  return String(value);
+}
+
+/**
+ * Escape a TSV field (quote when it contains tab, newline, or quotes).
+ * @param {string} value
+ */
+function escapeTsvCell(value) {
+  const text = String(value ?? "");
+  if (/[\t\n\r"]/.test(text)) {
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+  return text;
+}
+
+/**
+ * Serialize columns + rows to Excel-friendly TSV (header row + data).
+ * @param {Column[]} columns
+ * @param {Row[]} rows
+ * @returns {string}
+ */
+export function formatClipboardTable(columns, rows) {
+  const cols = Array.isArray(columns) ? columns : [];
+  const dataRows = Array.isArray(rows) ? rows : [];
+  if (!cols.length) return "";
+
+  const header = cols.map((col) => escapeTsvCell(col.label ?? ""));
+  const body = dataRows.map((row) =>
+    cols.map((col) =>
+      escapeTsvCell(formatCellForClipboard(row?.cells?.[col.id], col.type))
+    )
+  );
+  return [header, ...body].map((line) => line.join("\t")).join("\n");
+}
+
+/**
+ * Copy text to the clipboard (Clipboard API, with execCommand fallback).
+ * @param {string} text
+ * @returns {Promise<boolean>}
+ */
+async function copyTextToClipboard(text) {
+  if (navigator.clipboard?.writeText && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // Fall through to execCommand.
+    }
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.top = "0";
+  textarea.style.left = "0";
+  textarea.style.width = "1px";
+  textarea.style.height = "1px";
+  textarea.style.padding = "0";
+  textarea.style.border = "none";
+  textarea.style.outline = "none";
+  textarea.style.boxShadow = "none";
+  textarea.style.background = "transparent";
+  textarea.style.opacity = "0";
+  document.body.append(textarea);
+  textarea.focus();
+  textarea.select();
+  textarea.setSelectionRange(0, textarea.value.length);
+
+  let ok = false;
+  try {
+    ok = document.execCommand("copy");
+  } catch {
+    ok = false;
+  }
+  textarea.remove();
+  return ok;
+}
+
+/**
  * True when clipboard text looks like a multi-cell table (TSV / multi-line).
  * @param {string} text
  */
@@ -323,6 +412,19 @@ export function initTabularInput(
   breakoutBtn.setAttribute("aria-pressed", "true");
   setHidden(breakoutBtn, true);
 
+  const copyBtn = document.createElement("button");
+  copyBtn.type = "button";
+  copyBtn.className = "btn tabular-input-copy";
+  copyBtn.setAttribute("aria-label", "Copy table");
+  copyBtn.dataset.tooltip = "Copy for Excel";
+  const copyLabelEl = document.createElement("span");
+  copyLabelEl.className = "tabular-input-copy-label";
+  copyLabelEl.textContent = "Copy";
+  copyBtn.append(
+    createIcon("copy", { className: "btn-icon-svg" }),
+    copyLabelEl
+  );
+
   const addRowBtn = document.createElement("button");
   addRowBtn.type = "button";
   addRowBtn.className = "btn btn-icon tabular-input-add-row";
@@ -332,7 +434,7 @@ export function initTabularInput(
 
   const footerActions = document.createElement("div");
   footerActions.className = "tabular-input-footer-actions";
-  footerActions.append(addRowBtn, breakoutBtn);
+  footerActions.append(addRowBtn, breakoutBtn, copyBtn);
 
   const addColBtn = document.createElement("button");
   addColBtn.type = "button";
@@ -584,12 +686,16 @@ export function initTabularInput(
     });
   }
 
+  /** @type {ReturnType<typeof setTimeout> | null} */
+  let copyResetTimer = null;
+
   function syncDisabled() {
     rootEl.classList.toggle("tabular-input--disabled", isDisabled);
     addRowBtn.disabled = isDisabled;
     addColBtn.disabled = isDisabled;
     resetBtn.disabled = isDisabled;
     breakoutBtn.disabled = isDisabled;
+    copyBtn.disabled = isDisabled;
   }
 
   function getSlotWidth() {
@@ -1610,6 +1716,44 @@ export function initTabularInput(
     syncBreakoutLayout();
   }
 
+  function setCopyButtonLabel(text) {
+    const labelEl = copyBtn.querySelector(".tabular-input-copy-label");
+    if (labelEl) labelEl.textContent = text;
+  }
+
+  function resetCopyButtonLabel() {
+    setCopyButtonLabel("Copy");
+    copyBtn.setAttribute("aria-label", "Copy table");
+    copyBtn.dataset.tooltip = "Copy for Excel";
+  }
+
+  async function onCopyClick() {
+    if (isDisabled) return;
+    closeTooltip();
+    const text = formatClipboardTable(columns, rows);
+    const ok = await copyTextToClipboard(text);
+    if (copyResetTimer !== null) {
+      clearTimeout(copyResetTimer);
+      copyResetTimer = null;
+    }
+    if (ok) {
+      setCopyButtonLabel("Copied");
+      copyBtn.setAttribute("aria-label", "Copied");
+      announce("Table copied");
+      copyResetTimer = setTimeout(() => {
+        copyResetTimer = null;
+        resetCopyButtonLabel();
+      }, 1500);
+    } else {
+      setCopyButtonLabel("Failed");
+      copyBtn.setAttribute("aria-label", "Copy failed");
+      copyResetTimer = setTimeout(() => {
+        copyResetTimer = null;
+        resetCopyButtonLabel();
+      }, 1500);
+    }
+  }
+
   function onBreakoutViewportChange() {
     scheduleBreakoutSync();
   }
@@ -1629,6 +1773,7 @@ export function initTabularInput(
   addColBtn.addEventListener("click", onAddColClick);
   resetBtn.addEventListener("click", onResetClick);
   breakoutBtn.addEventListener("click", onBreakoutClick);
+  copyBtn.addEventListener("click", onCopyClick);
   rootEl.addEventListener("paste", onPaste);
   rootEl.addEventListener("keydown", onRootKeydown);
   window.addEventListener("resize", onBreakoutViewportChange);
@@ -1706,11 +1851,16 @@ export function initTabularInput(
         cancelAnimationFrame(breakoutSyncFrame);
         breakoutSyncFrame = null;
       }
+      if (copyResetTimer !== null) {
+        clearTimeout(copyResetTimer);
+        copyResetTimer = null;
+      }
       breakoutResizeObserver?.disconnect();
       addRowBtn.removeEventListener("click", onAddRowClick);
       addColBtn.removeEventListener("click", onAddColClick);
       resetBtn.removeEventListener("click", onResetClick);
       breakoutBtn.removeEventListener("click", onBreakoutClick);
+      copyBtn.removeEventListener("click", onCopyClick);
       rootEl.removeEventListener("paste", onPaste);
       rootEl.removeEventListener("keydown", onRootKeydown);
       window.removeEventListener("resize", onBreakoutViewportChange);

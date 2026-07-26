@@ -5,6 +5,8 @@ import {
   coerceCellValue,
   defaultValueForType,
   parseClipboardTable,
+  formatClipboardTable,
+  formatCellForClipboard,
   isTabularClipboardText,
   detectColumnType,
   isNumericCellValue,
@@ -79,9 +81,33 @@ test("detectColumnType prefers number, then logical, else text", () => {
   assert.equal(detectColumnType([]), "text");
 });
 
-test("isNumericCellValue and isLogicalCellValue helpers", () => {
-  assert.equal(isNumericCellValue("12"), true);
-  assert.equal(isNumericCellValue("x"), false);
-  assert.equal(isLogicalCellValue("yes"), true);
-  assert.equal(isLogicalCellValue("maybe"), false);
+test("formatClipboardTable emits Excel TSV with header row", () => {
+  const text = formatClipboardTable(
+    [
+      { id: "name", label: "Name", type: "text" },
+      { id: "qty", label: "Qty", type: "number" },
+      { id: "on", label: "On", type: "logical" },
+    ],
+    [
+      { id: "r1", cells: { name: "Widget", qty: 12, on: true } },
+      { id: "r2", cells: { name: "Gadget", qty: null, on: false } },
+    ]
+  );
+  assert.equal(text, "Name\tQty\tOn\nWidget\t12\ttrue\nGadget\t\tfalse");
+});
+
+test("formatClipboardTable quotes cells with tabs or newlines", () => {
+  assert.equal(
+    formatClipboardTable(
+      [{ id: "a", label: "A", type: "text" }],
+      [{ id: "r1", cells: { a: "x\ty" } }]
+    ),
+    'A\n"x\ty"'
+  );
+});
+
+test("formatCellForClipboard handles null and logical", () => {
+  assert.equal(formatCellForClipboard(null, "number"), "");
+  assert.equal(formatCellForClipboard(true, "logical"), "true");
+  assert.equal(formatCellForClipboard(false, "logical"), "false");
 });
