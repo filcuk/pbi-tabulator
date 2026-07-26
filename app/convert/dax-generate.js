@@ -46,10 +46,9 @@ export function generateDax(table, dialect = "datatable") {
 
 /** @param {import("./model.js").TableModel} model */
 function generateDatatable(model) {
-  const headerParts = model.columns.flatMap((col) => [
-    quoteString(col.label),
-    effectiveDaxType(col),
-  ]);
+  const headerParts = model.columns.map(
+    (col) => `${quoteString(col.label)}, ${effectiveDaxType(col)}`
+  );
 
   const rowParts = model.rows.map((row) => {
     const cells = model.columns.map((col) =>

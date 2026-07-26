@@ -26,12 +26,42 @@ const DEBOUNCE_MS = 280;
 const SAMPLE = normalizeTable({
   columns: [
     { id: "name", label: "Name", type: "text" },
-    { id: "age", label: "Age", type: "number" },
+    { id: "qty", label: "Qty", type: "number" },
+    { id: "rate", label: "Rate", type: "number" },
     { id: "active", label: "Active", type: "logical" },
+    { id: "amount", label: "Amount", type: "number" },
+    { id: "day", label: "Day", type: "text" },
+    { id: "updated", label: "Updated", type: "text" },
+    { id: "at", label: "At", type: "text" },
+    { id: "span", label: "Span", type: "text" },
   ],
   rows: [
-    { cells: { name: "Alice", age: 30, active: true } },
-    { cells: { name: "Bob", age: 25, active: false } },
+    {
+      cells: {
+        name: "Alice",
+        qty: 30,
+        rate: 1.5,
+        active: true,
+        amount: 19.99,
+        day: "2024-06-01",
+        updated: "2024-06-01 14:30:00",
+        at: "14:30:00",
+        span: "P1DT2H",
+      },
+    },
+    {
+      cells: {
+        name: "Bob",
+        qty: 25,
+        rate: 2.75,
+        active: false,
+        amount: 9.5,
+        day: "2025-01-15",
+        updated: "2025-01-15T09:00:00",
+        at: "09:00:00",
+        span: "PT30M",
+      },
+    },
   ],
 });
 
@@ -598,6 +628,10 @@ export function initConverterApp({ root = document } = {}) {
   }
 
   syncTypeConfigFromModel();
+  // CURRENCY is not auto-detected; lock Amount in the starter sample for DAX.
+  if (configLang() === "dax" && typeConfig.has("amount")) {
+    typeConfig.set("amount", { outputType: "CURRENCY", locked: true });
+  }
   updateDialectVisibility();
   updatePaneVisibility();
   renderConfigUi();
