@@ -126,14 +126,32 @@
             </div>
             <div id="input-code-wrap" class="hidden" hidden>
               <div
+                class="converter-pane-actions"
+                id="input-code-actions"
+                role="toolbar"
+                aria-label="Source code actions"
+              >
+                <button type="button" class="btn converter-pane-action" id="input-code-clear" aria-label="Clear source code">
+                  <span data-icon="delete" data-icon-class="btn-icon-svg" aria-hidden="true"></span>
+                  <span class="converter-pane-action-label">Clear</span>
+                </button>
+                <button type="button" class="btn converter-pane-action" id="input-code-copy" aria-label="Copy source code">
+                  <span data-icon="copy" data-icon-class="btn-icon-svg" aria-hidden="true"></span>
+                  <span class="converter-pane-action-label">Copy</span>
+                </button>
+                <button type="button" class="btn converter-pane-action" id="input-code-paste" aria-label="Paste source code">
+                  <span data-icon="paste" data-icon-class="btn-icon-svg" aria-hidden="true"></span>
+                  <span class="converter-pane-action-label">Paste</span>
+                </button>
+              </div>
+              <div
                 class="code-block code-block--wide"
                 id="input-code"
                 data-code-mode="edit"
-                data-code-copy="true"
+                data-code-copy="false"
                 data-code-editor-label="Source code"
               >
                 <div class="code-block-body">
-                  <button type="button" class="code-block-copy btn" aria-label="Copy source code">Copy</button>
                   <pre class="line-numbers language-dax"><code class="language-dax"></code></pre>
                 </div>
               </div>
@@ -235,6 +253,17 @@
           <section class="converter-pane" aria-labelledby="output-heading">
             <h2 id="output-heading">Output</h2>
             <div id="output-tabular-wrap" class="hidden" hidden>
+              <div
+                class="converter-pane-actions"
+                id="output-tabular-actions"
+                role="toolbar"
+                aria-label="Output table actions"
+              >
+                <button type="button" class="btn converter-pane-action" id="output-tabular-copy" aria-label="Copy table" data-tooltip="Copy for Excel" data-tooltip-position="top">
+                  <span data-icon="copy" data-icon-class="btn-icon-svg" aria-hidden="true"></span>
+                  <span class="converter-pane-action-label">Copy</span>
+                </button>
+              </div>
               <div
                 class="table-block table-block--wide"
                 id="output-table"

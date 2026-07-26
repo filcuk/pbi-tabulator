@@ -3,8 +3,12 @@
  */
 
 import { setHidden } from "./utils/dom.js";
+import { onDocumentEscape } from "./utils/document-listeners.js";
 import { initSegmentedControl } from "./components/segmented-control.js";
-import { initTabularInput } from "./components/tabular-input.js";
+import {
+  formatClipboardTable,
+  initTabularInput,
+} from "./components/tabular-input.js";
 import { initTable } from "./components/table.js";
 import { initCodeBlock } from "./components/code-block.js";
 import { initToggle } from "./components/toggle.js";
@@ -23,6 +27,106 @@ import {
 } from "./convert/output-types.js";
 
 const DEBOUNCE_MS = 280;
+
+/**
+ * Copy text to the clipboard (Clipboard API, with execCommand fallback).
+ * @param {string} text
+ * @returns {Promise<boolean>}
+ */
+async function copyTextToClipboard(text) {
+  if (navigator.clipboard?.writeText && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // Fall through to execCommand.
+    }
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.top = "0";
+  textarea.style.left = "0";
+  textarea.style.width = "1px";
+  textarea.style.height = "1px";
+  textarea.style.padding = "0";
+  textarea.style.border = "none";
+  textarea.style.outline = "none";
+  textarea.style.boxShadow = "none";
+  textarea.style.background = "transparent";
+  textarea.style.opacity = "0";
+  document.body.append(textarea);
+  textarea.focus();
+  textarea.select();
+  textarea.setSelectionRange(0, textarea.value.length);
+
+  let ok = false;
+  try {
+    ok = document.execCommand("copy");
+  } catch {
+    ok = false;
+  }
+  textarea.remove();
+  return ok;
+}
+
+/**
+ * Read plain text from the clipboard (Clipboard API).
+ * Returns `null` when unavailable or denied.
+ * @returns {Promise<string | null>}
+ */
+async function readTextFromClipboard() {
+  if (!window.isSecureContext || !navigator.clipboard) return null;
+
+  if (typeof navigator.clipboard.readText === "function") {
+    try {
+      return await navigator.clipboard.readText();
+    } catch {
+      // NotAllowedError / permission — try read() or paste-event fallback.
+    }
+  }
+
+  if (typeof navigator.clipboard.read === "function") {
+    try {
+      const items = await navigator.clipboard.read();
+      for (const item of items) {
+        if (!item.types.includes("text/plain")) continue;
+        const blob = await item.getType("text/plain");
+        return await blob.text();
+      }
+      return "";
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Flash a temporary label on a pane action button.
+ * @param {HTMLButtonElement | null} button
+ * @param {string} text
+ * @param {string} restore
+ * @param {{ current: ReturnType<typeof setTimeout> | null }} timerRef
+ */
+function flashActionLabel(button, text, restore, timerRef) {
+  if (!button) return;
+  const labelEl = button.querySelector(".converter-pane-action-label");
+  if (timerRef.current !== null) {
+    clearTimeout(timerRef.current);
+    timerRef.current = null;
+  }
+  if (labelEl) labelEl.textContent = text;
+  else button.textContent = text;
+  timerRef.current = setTimeout(() => {
+    timerRef.current = null;
+    if (labelEl) labelEl.textContent = restore;
+    else button.textContent = restore;
+  }, 1500);
+}
 
 /**
  * Prism language id for a converter lang (`dax` | `m`).
@@ -224,6 +328,118 @@ export function initConverterApp({ root = document } = {}) {
 
   const outputCode = initCodeBlock(root.querySelector("#output-code"), {
     mode: "select",
+  });
+
+  const inputCodeClearBtn = root.querySelector("#input-code-clear");
+  const inputCodeCopyBtn = root.querySelector("#input-code-copy");
+  const inputCodePasteBtn = root.querySelector("#input-code-paste");
+  const outputTabularCopyBtn = root.querySelector("#output-tabular-copy");
+
+  /** @type {{ current: ReturnType<typeof setTimeout> | null }} */
+  const inputCopyFlash = { current: null };
+  /** @type {{ current: ReturnType<typeof setTimeout> | null }} */
+  const inputPasteFlash = { current: null };
+  /** @type {{ current: ReturnType<typeof setTimeout> | null }} */
+  const outputCopyFlash = { current: null };
+
+  /** @type {{ cleanup: () => void, resolve: (text: string | null) => void } | null} */
+  let pasteCaptureSession = null;
+
+  function endPasteCapture(text) {
+    const session = pasteCaptureSession;
+    if (!session) return;
+    pasteCaptureSession = null;
+    session.cleanup();
+    session.resolve(text);
+  }
+
+  /**
+   * When Clipboard API read is blocked, arm a one-shot document paste listener.
+   * @param {HTMLButtonElement} button
+   * @returns {Promise<string | null>}
+   */
+  function waitForPasteViaShortcut(button) {
+    endPasteCapture(null);
+
+    return new Promise((resolve) => {
+      const labelEl = button.querySelector(".converter-pane-action-label");
+      const previous = labelEl?.textContent ?? "Paste";
+      if (labelEl) labelEl.textContent = "Ctrl+V";
+      button.setAttribute("aria-label", "Press Control V to paste");
+
+      /** @param {ClipboardEvent} event */
+      function onPaste(event) {
+        const next = event.clipboardData?.getData("text/plain") ?? "";
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        endPasteCapture(next);
+      }
+
+      const removeEscape = onDocumentEscape(() => {
+        endPasteCapture(null);
+        return true;
+      }, { priority: 60 });
+
+      const timer = setTimeout(() => {
+        endPasteCapture(null);
+      }, 15000);
+
+      function cleanup() {
+        clearTimeout(timer);
+        document.removeEventListener("paste", onPaste, true);
+        removeEscape();
+        if (labelEl) labelEl.textContent = previous;
+        button.setAttribute("aria-label", "Paste source code");
+      }
+
+      pasteCaptureSession = { cleanup, resolve };
+      document.addEventListener("paste", onPaste, true);
+    });
+  }
+
+  inputCodeClearBtn?.addEventListener("click", () => {
+    inputCode?.setSource("");
+    scheduleConvert();
+  });
+
+  inputCodeCopyBtn?.addEventListener("click", async () => {
+    const text = inputCode?.getSource() ?? "";
+    const ok = await copyTextToClipboard(text);
+    flashActionLabel(
+      inputCodeCopyBtn,
+      ok ? "Copied" : "Failed",
+      "Copy",
+      inputCopyFlash
+    );
+  });
+
+  inputCodePasteBtn?.addEventListener("click", async () => {
+    if (pasteCaptureSession) {
+      endPasteCapture(null);
+      return;
+    }
+
+    const readPromise = readTextFromClipboard();
+    let text = await readPromise;
+    if (text === null) {
+      text = await waitForPasteViaShortcut(inputCodePasteBtn);
+      if (text === null) return;
+    }
+
+    inputCode?.setSource(text);
+    flashActionLabel(inputCodePasteBtn, "Pasted", "Paste", inputPasteFlash);
+    scheduleConvert();
+  });
+
+  outputTabularCopyBtn?.addEventListener("click", async () => {
+    const text = formatClipboardTable(model.columns, model.rows);
+    const ok = await copyTextToClipboard(text);
+    flashActionLabel(
+      outputTabularCopyBtn,
+      ok ? "Copied" : "Failed",
+      "Copy",
+      outputCopyFlash
+    );
   });
 
   const sourceControl = initSegmentedControl(root.querySelector("#source-control"), {

@@ -46,6 +46,30 @@
   font-weight: 600;
 }
 
+.converter-pane-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.converter-pane-action {
+  gap: 0.35rem;
+  height: calc(var(--control-height) - 0.25rem);
+  min-height: calc(var(--control-height) - 0.25rem);
+  padding: 0 0.65rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  box-sizing: border-box;
+}
+
+.converter-pane-action .btn-icon-svg {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
 .converter-pane .code-block,
 .converter-pane .tabular-input:not(.tabular-input--breakout),
 .converter-pane .table-block {
