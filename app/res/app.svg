@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="190"
+   height="189.99998"
+   viewBox="0 0 190 189.99998"
+   version="1.1"
+   id="svg1"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1" />
+  <g
+     id="layer1"
+     transform="translate(-171.95508,-161.25002)">
+    <g
+       id="g7"
+       style="stroke:#ffffff;stroke-width:2.5;stroke-dasharray:none;stroke-opacity:1"
+       transform="translate(7.14746)">
+      <path
+         style="fill:#ffcc99;fill-opacity:1;stroke:#ffffff;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers fill stroke"
+         d="M 194.85572,312.5 216.50635,300 v -50 l 43.30127,-25 V 175 L 238.15699,162.5 173.20508,200 v 100 z"
+         id="path3" />
+      <path
+         style="fill:#feab00;fill-opacity:1;stroke:#ffffff;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers fill stroke"
+         d="m 194.85572,312.5 v -100 l 64.9519,-37.5 v 50 l -43.30127,25 v 50 z"
+         id="path5" />
+      <path
+         style="fill:#0074b2;fill-opacity:1;stroke:#ffffff;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers fill stroke"
+         d="m 216.50635,225 21.65064,-12.5"
+         id="path8" />
+      <path
+         style="fill:#0074b2;fill-opacity:1;stroke:#ffffff;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers fill stroke"
+         d="m 173.20508,200 21.65064,12.5"
+         id="path9" />
+    </g>
+    <g
+       id="g8"
+       style="stroke:#ffffff;stroke-width:2.5;stroke-dasharray:none;stroke-opacity:1"
+       transform="translate(7.14746)">
+      <path
+         style="fill:#67df92;fill-opacity:1;stroke:#ffffff;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers fill stroke"
+         d="m 281.45826,287.5 v -50 L 259.80762,225 v -50 l 21.65064,-12.5 64.9519,37.5 v 50 l -21.65063,12.5 v 25 L 303.10889,300 Z"
+         id="path4" />
+      <path
+         style="fill:#009e3c;fill-opacity:1;stroke:#ffffff;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers fill stroke"
+         d="m 259.80762,175 v 50 l 21.65064,12.5 v 50 l 21.65063,12.5 v -50 l 21.65064,12.5 v -50 z"
+         id="path6" />
+      <path
+         style="fill:#0074b2;fill-opacity:1;stroke:#ffffff;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers fill stroke"
+         d="M 324.75953,212.5 346.41016,200"
+         id="path10" />
+    </g>
+    <g
+       id="g6"
+       style="stroke:#ffffff;stroke-width:2.5;stroke-dasharray:none;stroke-opacity:1"
+       transform="translate(7.14746)">
+      <path
+         style="fill:#71dbff;fill-opacity:1;stroke:#ffffff;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers fill stroke"
+         d="m 194.85572,287.5 64.9519,-37.5 64.95191,37.5 v 25 l -64.95191,37.5 -64.9519,-37.5 z"
+         id="path1" />
+      <path
+         style="fill:#0074b2;fill-opacity:1;stroke:#ffffff;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers fill stroke"
+         d="M 194.85572,287.5 259.80762,325 324.75953,287.5 259.80762,250 Z"
+         id="path2" />
+      <path
+         style="fill:#0074b2;fill-opacity:1;stroke:#ffffff;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers fill stroke"
+         d="m 216.50635,300 64.95191,-37.5"
+         id="path11" />
+      <path
+         style="fill:#0074b2;fill-opacity:1;stroke:#ffffff;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers fill stroke"
+         d="M 238.15699,312.5 303.10889,275"
+         id="path12" />
+      <path
+         style="fill:#0074b2;fill-opacity:1;stroke:#ffffff;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers fill stroke"
+         d="m 216.50635,275 64.95191,37.5"
+         id="path13" />
+      <path
+         style="fill:#0074b2;fill-opacity:1;stroke:#ffffff;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers fill stroke"
+         d="m 238.15699,262.5 64.9519,37.5"
+         id="path14" />
+      <path
+         style="fill:#0074b2;fill-opacity:1;stroke:#ffffff;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers fill stroke"
+         d="M 303.10889,325 V 300"
+         id="path15" />
+      <path
+         style="fill:#0074b2;fill-opacity:1;stroke:#ffffff;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers fill stroke"
+         d="m 281.45826,337.5 v -25"
+         id="path16" />
+      <path
+         style="fill:#0074b2;fill-opacity:1;stroke:#ffffff;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers fill stroke"
+         d="M 259.80762,350 V 325"
+         id="path17" />
+      <path
+         style="fill:#0074b2;fill-opacity:1;stroke:#ffffff;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers fill stroke"
+         d="m 238.15699,312.5 v 25"
+         id="path18" />
+      <path
+         style="fill:#0074b2;fill-opacity:1;stroke:#ffffff;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers fill stroke"
+         d="m 216.50635,300 v 25"
+         id="path19" />
+    </g>
+  </g>
+</svg>
