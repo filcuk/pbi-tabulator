@@ -71,6 +71,51 @@ function normalizeSource(text) {
   return text.replace(/\n+$/, "");
 }
 
+/**
+ * Copy text to the clipboard. Uses the Clipboard API when available in a
+ * secure context; falls back to `execCommand("copy")` for HTTP / LAN hosts.
+ * @param {string} text
+ * @returns {Promise<boolean>}
+ */
+async function copyTextToClipboard(text) {
+  if (navigator.clipboard?.writeText && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // Fall through to execCommand.
+    }
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.top = "0";
+  textarea.style.left = "0";
+  textarea.style.width = "1px";
+  textarea.style.height = "1px";
+  textarea.style.padding = "0";
+  textarea.style.border = "none";
+  textarea.style.outline = "none";
+  textarea.style.boxShadow = "none";
+  textarea.style.background = "transparent";
+  textarea.style.opacity = "0";
+  document.body.append(textarea);
+  textarea.focus();
+  textarea.select();
+  textarea.setSelectionRange(0, textarea.value.length);
+
+  let ok = false;
+  try {
+    ok = document.execCommand("copy");
+  } catch {
+    ok = false;
+  }
+  textarea.remove();
+  return ok;
+}
+
 function countDisplayLines(text) {
   if (text === "") return 1;
   return text.split("\n").length;
@@ -302,9 +347,9 @@ export function initCodeBlock(container, options = {}) {
     if (!copyButton || copyBtn.disabled) return;
 
     const text = mode === "edit" && editorEl ? editorEl.value : source;
+    const ok = await copyTextToClipboard(text);
 
-    try {
-      await navigator.clipboard.writeText(text);
+    if (ok) {
       const label = copyBtn.getAttribute("aria-label") || "Copy code";
       copyBtn.textContent = "Copied";
       copyBtn.setAttribute("aria-label", "Copied");
@@ -312,7 +357,7 @@ export function initCodeBlock(container, options = {}) {
         copyBtn.textContent = "Copy";
         copyBtn.setAttribute("aria-label", label);
       }, 2000);
-    } catch {
+    } else {
       copyBtn.textContent = "Failed";
       window.setTimeout(() => {
         copyBtn.textContent = "Copy";

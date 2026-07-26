@@ -1,6 +1,22 @@
 # AGENTS.md
 
-Rules for AI agents working in this microapp template repository.
+Rules for AI agents working in this microapp repository (Power BI Tabulator).
+
+## Product
+
+Bidirectional converter between tabular data, DAX, and Power Query M.
+
+| Path | Role |
+| ---- | ---- |
+| [`app/converter-app.js`](app/converter-app.js) | UI orchestration (source/target, dialects, live convert) |
+| [`app/convert/`](app/convert/) | Pure parse/generate modules (no DOM) |
+| [`app/convert/index.js`](app/convert/index.js) | Facade: `parse(lang, text)`, `generate(lang, dialect, table)` |
+| [`app/components/tabular-input.js`](app/components/tabular-input.js) | Editable typed grid (canonical model shape) |
+
+Canonical table shape: `{ columns: [{ id, label, type, outputType? }], rows: [{ id, cells }] }` with types `text` | `number` | `logical`. Optional `outputType` is the exact DAX/M type used when generating (see `app/convert/output-types.js`). When source is tabular and target is DAX/M, the Configuration section lets users override per-column output types; auto-detected until manually changed (then locked).
+
+DAX dialects: `datatable`, `constructor`, `union-row`. 
+M dialects: `table`, `from-records`, `binary-from-text`.
 
 ## Confirm before complexity
 
@@ -109,6 +125,7 @@ Always use `setHidden()` from `app/utils/dom.js` when showing/hiding elements pr
 | `app/styles.css` | Entry point — `@import` only |
 | `app/tokens.css` | Reset, `:root` tokens, dark theme, base typography, `.hidden`, reduced-motion |
 | `app/css/layout.css` | Page shell, sections, section panels, page nav, footer, theme toggle |
+| `app/css/converter.css` | Converter toolbar and two-pane layout |
 | `app/css/code-block.css` | Code blocks and expandable surfaces |
 | `app/css/controls-buttons.css` | Toolbar, buttons |
 | `app/css/controls-badges.css` | Corner badges on controls and labels |
@@ -132,7 +149,8 @@ Modules live under `app/shell/`, `app/utils/`, and `app/components/` (no build s
 
 | Layer | Examples | Role |
 | ----- | -------- | ---- |
-| Entry | `main.js`, `demo.js`, `theme-init.js`, `config.js`, `version.js` | Loaded directly from HTML |
+| Entry | `main.js`, `converter-app.js`, `theme-init.js`, `config.js`, `version.js` | Loaded directly from HTML |
+| Convert | `app/convert/*` | DAX/M parse and generate (no DOM) |
 | Shell | `app/shell/shell.js`, `render-shell.js`, `theme.js`, `page-nav.js`, `sticky.js`, … | Shared page chrome via `initShell()` |
 | Infrastructure | `app/utils/dom.js`, `document-listeners.js`, `icons.js`, `menu.js`, `brand-icon.js` | Shared helpers and registries |
 | Components | `app/components/dialog.js`, `dropdown.js`, `tabs.js`, `code-block.js`, … | One `initX` (or `initXs`) per feature — import only what you need |
