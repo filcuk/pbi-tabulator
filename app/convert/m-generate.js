@@ -149,6 +149,7 @@ async function generateBinaryFromText(model, opts) {
 
   const b64 = await encodeJsonDeflateBase64(jsonRows);
   const typeClause = typeTableClause(model, {
+    multiline: true,
     alignCommas: opts.alignCommas,
   });
 
