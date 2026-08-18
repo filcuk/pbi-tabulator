@@ -54,35 +54,40 @@
   margin-bottom: 0.5rem;
 }
 
-.converter-pane-action {
-  gap: 0.35rem;
-  height: calc(var(--control-height) - 0.25rem);
-  min-height: calc(var(--control-height) - 0.25rem);
-  padding: 0 0.65rem;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  box-sizing: border-box;
+.converter-pane-actions .btn {
+  gap: 0.375rem;
 }
 
-.converter-pane-action [data-icon] {
-  display: inline-flex;
+.converter-output-code-extras {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
-  line-height: 0;
-  flex-shrink: 0;
+  gap: 0.5rem 0.85rem;
+  margin-inline-start: 1rem;
 }
 
-.converter-pane-action .btn-icon-svg {
-  width: 1rem;
-  height: 1rem;
-  flex-shrink: 0;
-  display: block;
+.converter-output-code-extras .toggle-btn {
+  min-height: 0;
+}
+
+.converter-output-code-extras .toggle-label {
+  font-size: 0.8125rem;
 }
 
 .converter-pane .code-block,
 .converter-pane .tabular-input:not(.tabular-input--breakout),
 .converter-pane .table-block {
   width: 100%;
+  max-width: none;
+}
+
+#output-code.code-block {
+  overflow: visible;
+}
+
+#output-code .code-block-body {
+  overflow: hidden;
+  border-radius: 0 0 6px 6px;
 }
 
 .converter-config-hint {
@@ -92,13 +97,6 @@
   line-height: 1.4;
 }
 
-.converter-config-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem 1.25rem;
-  align-items: center;
-}
-
 .converter-config-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
@@ -106,6 +104,7 @@
 }
 
 .converter-config-cell {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
@@ -114,6 +113,10 @@
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--surface);
+}
+
+.converter-config-cell:has(.dropdown-trigger[aria-expanded="true"]) {
+  z-index: 2;
 }
 
 .converter-config-cell-head {
@@ -135,10 +138,25 @@
 }
 
 .converter-config-type {
+  display: block;
   width: 100%;
+  align-self: stretch;
+}
+
+.converter-config-type .dropdown-trigger {
+  width: 100%;
+  justify-content: space-between;
   min-height: 2rem;
-  padding: 0 0.5rem;
+  padding: 0 0.5rem 0 0.65rem;
   font-size: 0.8125rem;
+  font-weight: 400;
+}
+
+.converter-config-type .dropdown-trigger-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .converter-config-lock {

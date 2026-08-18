@@ -13,7 +13,7 @@ Bidirectional converter between tabular data, DAX, and Power Query M.
 | [`app/convert/index.js`](app/convert/index.js) | Facade: `parse(lang, text)`, `generate(lang, dialect, table)` |
 | [`app/components/tabular-input.js`](app/components/tabular-input.js) | Editable typed grid (canonical model shape) |
 
-Canonical table shape: `{ columns: [{ id, label, type, outputType? }], rows: [{ id, cells }] }` with types `text` | `number` | `logical`. Optional `outputType` is the exact DAX/M type used when generating (see `app/convert/output-types.js`). When source is tabular and target is DAX/M, the Configuration section lets users override per-column output types; auto-detected until manually changed (then locked). Column type overrides are hidden for M `from-records` (no type clause). **Align output** (default off) pads fields so commas line up across rows. **Minimised output** (default off) puts column definitions on a single line. **Comma first** (default off) puts the comma at the start of each new line instead of trailing the previous one. The tabular input **breaks out centered** to the canvas when columns exceed the page body (toggle to constrain; control only while overflowing).
+Canonical table shape: `{ columns: [{ id, label, type, outputType? }], rows: [{ id, cells }] }` with types `text` | `number` | `logical`. Optional `outputType` is the exact DAX/M type used when generating (see `app/convert/output-types.js`). When source is tabular and target is DAX/M, the Configuration section lets users override per-column output types; auto-detected until manually changed (then locked). Column type overrides are hidden for M `from-records` (no type clause). **Align output**, **Minimised output**, and **Comma first** live on the output code-block toolbar (defaults off). Source DAX/M uses the input code-block toolbar for Clear, Copy, Paste, and Maximize. The tabular input **breaks out centered** to the canvas when columns exceed the page body (toggle to constrain; control only while overflowing).
 
 DAX dialects: `datatable`, `constructor`, `union-row`. 
 M dialects: `table`, `from-records`, `binary-from-text`.
@@ -37,19 +37,20 @@ Prefer the simplest approach that fits the existing template.
 ## Reuse the design system
 
 - Use CSS custom properties from `app/tokens.css` (`--bg`, `--surface`, `--input-bg`, `--accent`, etc.)
-- Use existing component classes: `.btn`, `.btn-primary`, `.modal`, `.banner`, `.section-panel`, `.code-block`, `.theme-toggle`
-- Add or edit inline UI icons in `app/icons.js` only — do not duplicate SVG paths in HTML
+- Use existing component classes: `.btn`, `.btn-primary`, `.banner`, `.code-block`, `.theme-toggle`
+- Add or edit inline UI icons in `app/utils/icons-template.js` (catalogue) or `app/utils/icons-app.js` (fork) only — do not duplicate SVG paths in HTML
 - Do not introduce parallel styling systems (Tailwind, CSS-in-JS, component libraries)
 
 ## Page boot conventions
 
 Every HTML entry point should:
 
-1. Include blocking `app/theme-init.js` in `<head>` (prevents theme flash)
-2. Link `app/styles.css` (imports `tokens.css` + `app/css/*.css` partials)
-3. Call `initShell()` from `app/shell/shell.js` as the first step in the page module
+1. Optional `window.__MICROAPP__` bridge **before** theme-init (theme key, app icons)
+2. Include blocking `app/theme-init.js` in `<head>` (prevents theme flash)
+3. Link `app/styles.css` (fork entry: `tokens.css` → `css/template.css` → `css/app.css`)
+4. Call `initShell()` from `app/shell/shell.js` as the first step in the page module
 
-`initShell()` renders shared chrome via `renderPageShell()` (`app/render-shell.js`), then boots icons, external links, heading links, theme toggle, sticky chrome offsets, tooltips, and page navigation. Do **not** duplicate footer, theme toggle, or `#page-nav` markup in HTML.
+`initShell()` renders shared chrome via `renderPageShell()` (`app/shell/render-shell.js`), then boots icons, external links, heading links, theme toggle, sticky chrome offsets, tooltips, and page navigation. Do **not** duplicate footer, theme toggle, or `#page-nav` markup in HTML.
 
 Optional `renderPageShell({ repoUrl, appUrl, brandUrl, brandName, alsoSee, alsoSeeUrl, alsoSeeTopics })` overrides for forks. Pass `alsoSee: false` or `alsoSee: []` to hide the footer related-apps menu when there is no remote list. Set `alsoSeeUrl` to a JSON URL (topic sections and/or flat links) to load a shared live list; local `alsoSee` is the fallback. Set `alsoSeeTopics` to a string array to show only those topics (case-insensitive; ungrouped flat links always remain). Set `appUrl` to this app’s public site URL so a matching entry in the list is omitted.
 
@@ -57,49 +58,36 @@ Optional `renderPageShell({ repoUrl, appUrl, brandUrl, brandName, alsoSee, alsoS
 
 | Pattern | Use for |
 | -------- | ------- |
-| `initX({ … })` | Single instance (dialog, combo, dropdown, expand, tab) |
-| `initXs(root)` | Scan a subtree for blocks (e.g. `initTabs`, `initExpands`, `initAccordions`, `initCodeBlocks`) |
+| `initX({ … })` | Single instance (dropdown, code-block, toggle, …) |
+| `initXs(root)` | Scan a subtree for blocks (e.g. `initCodeBlocks`, `initToggles`) |
 | `initShell()` | Standard page boot (footer, theme, page nav, tooltips, external links, heading links, also-see) |
 | `initAlsoSee(root)` | Footer “also see” related-apps menu — no-op when disabled |
 | `initExternalLinks(root)` | Append arrow-outward icon to external links |
-| `initHeadingLinks(root)` | Copy-link button on `main h2[id]` headings |
+| `initHeadingLinks(root)` | Copy-link button on `main :is(h2, h3)[id]` headings |
 | `initCodeBlocks(root)` / `initCodeBlock(el)` | Prism code blocks with copy, modes, toolbar toggles |
-| `initExpandableSurfaces(root)` | Maximize `[data-expandable-surface]` to page-width overlay |
+| `initExpandableSurface(el)` / `initExpandableSurfaces(root)` | Maximize `[data-expandable-surface]` to a page-width overlay |
 | `showBanner()` / `hideBanner()` | Show or hide `.banner` elements; respects `data-banner-expire` |
 | `initPageNav()` / `initPageNavPanel()` | Page nav only — requires `PAGE_NAV_MARKUP` from `app/shell/render-shell.js` |
 | `initStickyChrome()` / `setStickyHeader()` / `setStickySectionHeadings()` | Optional sticky site header and section headings (`data-sticky-header`, `data-sticky-section-headings`) |
-| `initTab()` / `initTabs()` | Single tabbed section vs every `.tabs` block |
 | `setHidden()` / `parseBooleanAttr()` | Toggle visibility — always sets **both** `.hidden` class and `hidden` attribute; parse HTML boolean `data-*` values |
-| `initPopupMenu()` | Anchored popup menus (combo chevron, dropdown) |
-| `initDropdown()` / `initToggleDropdown()` | Single-select vs multi-select toggle dropdown menus |
-| `initCombobox()` / `initComboboxes()` | Text input with filterable autocomplete list |
-| `initFileDropzone()` / `initFileDropzones()` | Drag-and-drop / browse file picker |
-| `initFileDownload()` / `initFileDownloads()` | Click-to-download generated files |
-| `initDatePicker()` / `initDatePickers()` | Calendar popup with optional time input |
-| `initSlider()` / `initSliders()` | Range slider with editable value (integer, decimal, percentage) |
-| `initProgressBar()` / `initProgressBars()` | Progress bar with optional percent or fraction label |
-| `initSpinner()` / `initSpinners()` | Loading spinner; optional blocking overlay on a host |
-| `initStepper()` / `initSteppers()` | Numeric nudger with decrement/increment buttons |
-| `initColorPicker()` / `initColorPickers()` | Hex colour input with inline swatch preview |
+| `initPopupMenu()` | Anchored popup menus (dropdown, also-see, tabular-input type menu) |
+| `initDropdown()` | Single-select dropdown menu |
+| `initAboutDialog()` | Tagline “What?” dialog with optional Huh? stages |
+| `initTutorial()` | Spotlight guided tour (popover steps) |
 | `initToggle()` / `initToggles()` | On/off switch control; optional `data-toggle-tristate` for off → on → mixed |
-| `initTriStateCheckbox()` / `initTriStateCheckboxes()` | Tri-state checkbox (`data-checkbox-tristate`) — unchecked → checked → mixed |
-| `initBadge()` / `initBadges()` | Corner badge on a `.badge-host` (normal readout or `.badge--sm` dot) |
-| `initChipGroup()` / `initChipGroups()` | Selectable filter chips (toggle pressed; not removable) |
-| `initChipInput()` / `initChipInputs()` | Text field that adds removable chips |
 | `initSegmentedControl()` / `initSegmentedControls()` | Segmented control (toggle button group) |
-| `initPagination()` / `initPaginations()` | Client-side pagination (numbered pages, no URL change) |
 | `initTable()` / `initTables()` | Data table with optional sortable columns and row selection |
 | `initTabularInput()` / `initTabularInputs()` | Editable typed grid; paste (in-place / replace); reset; add/remove rows and columns; rename / type |
-| `initProgressIndicator()` / `initProgressIndicators()` | Multi-step wizard with indicators, panels, and back/next |
-| `initRichTextEditor()` / `initRichTextEditors()` | Toast UI rich text editor (Markdown + WYSIWYG); requires vendor scripts |
 | `onDocumentClickOutside()` / `onDocumentEscape()` | Shared document listeners — do not add per-instance `document` listeners for these |
+
+This fork pins a **partial** catalogue in [`template.lock.json`](template.lock.json). Restore extra components with the **restore-component** skill rather than copying files by hand.
 
 ### Document listeners
 
 `app/utils/document-listeners.js` registers **one** click and one keydown handler on `document`. Modules register callbacks:
 
 - **Click outside:** all handlers run on every click (menus close when click is outside)
-- **Escape:** handlers sorted by priority (higher first). Return `true` when handled. Dialogs use priority `100`, expandable surfaces `90`, menus use `50`.
+- **Escape:** handlers sorted by priority (higher first). Return `true` when handled. Menus / popovers use `50`.
 
 When a module registers listeners, store and call the returned unsubscribe in `destroy()` if provided.
 
@@ -111,10 +99,11 @@ Always use `setHidden()` from `app/utils/dom.js` when showing/hiding elements pr
 
 - Declare icons with `data-icon="name"` and optional `data-icon-class="…"` in HTML
 - Call `initIcons()` (via `initShell()`) to inject SVGs
-- **Agents must not invent or generate SVG paths** — see [`.cursor/rules/icons.mdc`](.cursor/rules/icons.mdc). If an icon is missing, ask the user to add it to `app/icons.js` (a blank template is documented in that file’s header). Reuse existing ids or `{ ref: "other-icon" }` when appropriate.
-- Users add new icon paths in `app/utils/icons.js` only — do not duplicate SVG paths in HTML
-- Source SVGs from [Icônes — Google Material Icons (Round variant)](https://icones.js.org/collection/ic?s=info&variant=Round); copy path markup into `ICONS` and set `attribution` when required
-- For sourced icons, set `name` to the original collection id (e.g. `round-info`) — metadata for traceability; omit for custom or in-house icons. The `ICONS` object key remains the app id used in `data-icon`
+- **Agents must not invent or generate SVG paths** — see [`.cursor/rules/icons.mdc`](.cursor/rules/icons.mdc)
+- Template catalogue: [`app/utils/icons-template.js`](app/utils/icons-template.js) (`TEMPLATE_ICONS`; synced). Fork additions: [`app/utils/icons-app.js`](app/utils/icons-app.js) (`APP_ICONS`; never overwritten). Public API: [`app/utils/icons.js`](app/utils/icons.js) (`createIcon` / `initIcons`; app wins on key clash)
+- If an icon is missing, use the **add-icon** skill or ask the user to add it to `icons-app.js` (blank stub with empty `markup` is documented in that file’s header). Reuse existing ids or `{ ref: "other-icon" }` when appropriate
+- Source SVGs from [Icônes — Google Material Icons (Round variant)](https://icones.js.org/collection/ic?s=info&variant=Round); copy path markup into `TEMPLATE_ICONS` / `APP_ICONS` and set `attribution` when required
+- For sourced icons, set `name` to the original collection id (e.g. `round-info`) — metadata for traceability; omit for custom or in-house icons. The object key remains the app id used in `data-icon`
 - To alias one app id to another, use `{ ref: "other-icon" }` instead of duplicating markup (e.g. `lines: { ref: "note" }`)
 - Third-party icons that require a license notice: set `attribution` on the icon definition (use `ICON_ATTRIBUTIONS` for common sets). Rendered as an SVG comment via `createIcon()` / `initIcons()`
 
@@ -122,26 +111,22 @@ Always use `setHidden()` from `app/utils/dom.js` when showing/hiding elements pr
 
 | File | Contents |
 | ---- | -------- |
-| `app/styles.css` | Entry point — `@import` only |
+| `app/styles.css` | Fork entry — `@import` only (`tokens.css` → `css/template.css` → `css/app.css`) |
 | `app/tokens.css` | Reset, `:root` tokens, dark theme, base typography, `.hidden`, reduced-motion |
-| `app/css/layout.css` | Page shell, sections, section panels, page nav, footer, theme toggle |
+| `app/css/template.css` | Generated index of selected template partials (do not hand-edit) |
+| `app/css/app.css` | Fork-owned styles (imports `converter.css`; never overwritten by sync) |
 | `app/css/converter.css` | Converter toolbar and two-pane layout |
+| `app/css/layout.css` | Page shell, sections, page nav, footer, theme toggle |
 | `app/css/code-block.css` | Code blocks and expandable surfaces |
 | `app/css/controls-buttons.css` | Toolbar, buttons |
-| `app/css/controls-badges.css` | Corner badges on controls and labels |
-| `app/css/controls-chips.css` | Selectable filter chips and removable input chips |
-| `app/css/controls-fields.css` | Fields, combobox, date/time, color picker |
-| `app/css/controls-widgets.css` | Toggle, segmented control, pagination, progress bar, spinner, slider, stepper |
-| `app/css/controls-section-panel.css` | Section panel grid rows |
-| `app/css/controls-menus.css` | Combo button, dropdown menus |
-| `app/css/controls-disclosure.css` | Expand, accordion, tabs, progress indicator |
-| `app/css/controls-file.css` | File dropzone, file download |
-| `app/css/overlays.css` | Banners, tooltips, modals |
-| `app/css/rich-text-editor.css` | Rich text editor field layout and Toast UI token overrides |
+| `app/css/controls-fields.css` | Fields / `.input` |
+| `app/css/controls-widgets.css` | Toggle, segmented control |
+| `app/css/controls-menus.css` | Dropdown menus |
+| `app/css/overlays.css` | Banners, tooltips |
 | `app/css/table.css` | Data table layout, sort controls, and selection column |
 | `app/css/controls-tabular-input.css` | Editable typed grid (tabular input) |
 
-Keep HTML linking only `styles.css`. Edit tokens or the relevant partial under `app/css/`; do not merge back into a monolith.
+Keep HTML linking only `styles.css`. Fork rules go in `app/css/app.css` or `converter.css`. Do not hand-edit `template.css` or merge partials back into a monolith.
 
 ## JS module layers
 
@@ -152,8 +137,8 @@ Modules live under `app/shell/`, `app/utils/`, and `app/components/` (no build s
 | Entry | `main.js`, `converter-app.js`, `theme-init.js`, `config.js`, `version.js` | Loaded directly from HTML |
 | Convert | `app/convert/*` | DAX/M parse and generate (no DOM) |
 | Shell | `app/shell/shell.js`, `render-shell.js`, `theme.js`, `page-nav.js`, `sticky.js`, … | Shared page chrome via `initShell()` |
-| Infrastructure | `app/utils/dom.js`, `document-listeners.js`, `icons.js`, `menu.js`, `brand-icon.js` | Shared helpers and registries |
-| Components | `app/components/dialog.js`, `dropdown.js`, `tabs.js`, `code-block.js`, … | One `initX` (or `initXs`) per feature — import only what you need |
+| Infrastructure | `app/utils/dom.js`, `document-listeners.js`, `clipboard.js`, `icons.js` (merge), `icons-template.js`, `icons-app.js`, `menu.js`, `brand-icon.js` | Shared helpers and registries |
+| Components | `app/components/code-block.js`, `tabular-input.js`, `toggle.js`, … | One `initX` (or `initXs`) per feature — import only what you need |
 
 Respect `prefers-reduced-motion: reduce` — transitions live in components; global overrides are in `tokens.css`. JS scroll behaviour should use `prefersReducedMotion()` from `app/utils/dom.js`.
 
@@ -164,9 +149,10 @@ After cloning, run `npm ci`, then:
 ```bash
 npm run lint
 npm test
+npm run verify:template
 ```
 
-CI runs the same checks on push and pull requests (`.github/workflows/ci.yml`).
+CI runs lint and tests on push and pull requests (`.github/workflows/ci.yml`). Pin and sync the template with [`template.lock.json`](template.lock.json) (`npm run sync:template` / `npm run verify:template`).
 
 ## Keep GitHub Pages deployable
 
@@ -195,8 +181,8 @@ Match the established look (based on [pqm-stepper](https://github.com/filcuk/pqm
 
 ## When extending this template
 
-1. Read `USAGE.md` for available components and fork instructions
-2. Check `demo.html` for usage examples
+1. Read `USAGE.md` for the template catalogue and fork instructions
+2. Check [`template.lock.json`](template.lock.json) for which components this app actually ships
 3. Keep changes focused — one concern per file when possible
 4. Update `USAGE.md` when you add or change a reusable component, module API, or deploy workflow (see `.cursor/rules/usage-docs.mdc`)
 5. Update `AGENTS.md` if you add a new `initX` pattern to the module conventions table

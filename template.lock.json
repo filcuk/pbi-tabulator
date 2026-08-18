@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 2,
+  "templateVersion": "0.12.1",
+  "source": "filcuk/sma1-framework",
+  "components": [
+    "about-dialog",
+    "code-block",
+    "dialog",
+    "dropdown",
+    "expandable-surface",
+    "fields",
+    "popover",
+    "segmented-control",
+    "table",
+    "tabular-input",
+    "toggle",
+    "tutorial"
+  ],
+  "skills": [
+    "*"
+  ]
+}

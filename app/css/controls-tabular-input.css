@@ -12,8 +12,7 @@
   box-sizing: border-box;
 }
 
-/* Centered canvas breakout when columns exceed the page body width.
-   Needs ≥2 classes so it wins over `.converter-pane .tabular-input { width: 100% }`. */
+/* Centered canvas breakout when columns exceed the page body width. */
 .tabular-input.tabular-input--breakout {
   width: min(
     var(--tabular-breakout-width),

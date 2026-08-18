@@ -8,8 +8,8 @@
       content="Convert between tabular data, DAX dynamic tables, and Power Query M"
     />
     <title>Power BI Tabulator</title>
-    <link rel="icon" href="app/res/app-light.svg" type="image/svg+xml" data-brand-icon />
-    <script>window.__MICROAPP__={themeStorageKey:"pbi-tabulator-theme"};</script>
+    <link rel="icon" href="app/res/app.svg" type="image/svg+xml" data-brand-icon />
+    <script>window.__MICROAPP__={themeStorageKey:"pbi-tabulator-theme",appIcon:"app/res/app.svg",appIconLight:"",appIconDark:""};</script>
     <script src="app/theme-init.js"></script>
     <link rel="stylesheet" href="app/styles.css" />
     <link rel="stylesheet" href="app/prism.css" />
@@ -17,11 +17,13 @@
   <body>
     <header>
       <div class="site-brand">
-        <img class="site-logo brand-icon--light" src="app/res/app-light.svg" alt="Power BI Tabulator" width="40" height="40" />
-        <img class="site-logo brand-icon--dark" src="app/res/app-dark.svg" alt="" width="40" height="40" aria-hidden="true" />
+        <img class="site-logo" src="app/res/app.svg" alt="Power BI Tabulator" width="40" height="40" />
         <h1>Power BI Tabulator</h1>
       </div>
-      <p class="tagline">Convert between a table, DAX, and Power Query M</p>
+      <p class="tagline">
+        <em>Spectabular</em> conversion for <code>DAX</code> and Power Query <code>M</code>.
+        <button type="button" id="about-open-btn" class="btn btn-link tagline-link">What?</button>
+      </p>
     </header>
 
     <main id="main">
@@ -36,7 +38,9 @@
       </div>
 
       <section class="converter" aria-label="Table converter">
-        <div class="converter-toolbar">
+        <section class="converter-pane" aria-labelledby="conversion-heading">
+          <h2 id="conversion-heading">Conversion</h2>
+          <div class="converter-toolbar">
           <div class="converter-field">
             <span class="converter-field-label" id="source-label">Source</span>
             <div
@@ -112,7 +116,8 @@
               <input type="hidden" class="segmented-control-value" name="m-dialect" value="table" />
             </div>
           </div>
-        </div>
+          </div>
+        </section>
 
         <div class="converter-panes">
           <section class="converter-pane" aria-labelledby="input-heading">
@@ -126,32 +131,17 @@
             </div>
             <div id="input-code-wrap" class="hidden" hidden>
               <div
-                class="converter-pane-actions"
-                id="input-code-actions"
-                role="toolbar"
-                aria-label="Source code actions"
-              >
-                <button type="button" class="btn converter-pane-action" id="input-code-clear" aria-label="Clear source code">
-                  <span data-icon="delete" data-icon-class="btn-icon-svg" aria-hidden="true"></span>
-                  <span class="converter-pane-action-label">Clear</span>
-                </button>
-                <button type="button" class="btn converter-pane-action" id="input-code-copy" aria-label="Copy source code">
-                  <span data-icon="copy" data-icon-class="btn-icon-svg" aria-hidden="true"></span>
-                  <span class="converter-pane-action-label">Copy</span>
-                </button>
-                <button type="button" class="btn converter-pane-action" id="input-code-paste" aria-label="Paste source code">
-                  <span data-icon="paste" data-icon-class="btn-icon-svg" aria-hidden="true"></span>
-                  <span class="converter-pane-action-label">Paste</span>
-                </button>
-              </div>
-              <div
-                class="code-block code-block--wide"
+                class="code-block code-block--full"
                 id="input-code"
                 data-code-mode="edit"
-                data-code-copy="false"
+                data-code-toolbar="top"
+                data-code-toolbar-actions="clear,copy,paste,maximize"
+                data-code-surface-actions="none"
                 data-code-editor-label="Source code"
+                data-expandable-surface
+                data-expandable-surface-label="Source code"
               >
-                <div class="code-block-body">
+                <div class="code-block-body" data-expandable-surface-trigger>
                   <pre class="line-numbers language-dax"><code class="language-dax"></code></pre>
                 </div>
               </div>
@@ -163,90 +153,7 @@
             id="config-section"
             aria-labelledby="config-heading"
           >
-            <h2 id="config-heading">Configuration</h2>
-            <p class="converter-config-hint">
-              Configure output style and column types.
-            </p>
-            <div class="converter-config-options">
-              <div
-                class="toggle"
-                id="align-commas-toggle"
-                data-toggle-default="false"
-              >
-                <button
-                  type="button"
-                  class="toggle-btn"
-                  role="switch"
-                  aria-checked="false"
-                  data-tooltip="Pad fields to line up output in columns"
-                  data-tooltip-position="top"
-                >
-                  <span class="toggle-track" aria-hidden="true">
-                    <span class="toggle-thumb">
-                      <span
-                        data-icon="check"
-                        data-icon-class="toggle-thumb-icon toggle-thumb-icon--on"
-                        aria-hidden="true"
-                      ></span>
-                    </span>
-                  </span>
-                  <span class="toggle-label">Align output</span>
-                </button>
-                <input type="hidden" class="toggle-value" value="false" />
-              </div>
-              <div
-                class="toggle"
-                id="minimised-output-toggle"
-                data-toggle-default="false"
-              >
-                <button
-                  type="button"
-                  class="toggle-btn"
-                  role="switch"
-                  aria-checked="false"
-                  data-tooltip="Keep column definitions on a single line"
-                  data-tooltip-position="top"
-                >
-                  <span class="toggle-track" aria-hidden="true">
-                    <span class="toggle-thumb">
-                      <span
-                        data-icon="check"
-                        data-icon-class="toggle-thumb-icon toggle-thumb-icon--on"
-                        aria-hidden="true"
-                      ></span>
-                    </span>
-                  </span>
-                  <span class="toggle-label">Minimised output</span>
-                </button>
-                <input type="hidden" class="toggle-value" value="false" />
-              </div>
-              <div
-                class="toggle"
-                id="comma-first-toggle"
-                data-toggle-default="false"
-              >
-                <button
-                  type="button"
-                  class="toggle-btn"
-                  role="switch"
-                  aria-checked="false"
-                  data-tooltip="Use leading commas"
-                  data-tooltip-position="top"
-                >
-                  <span class="toggle-track" aria-hidden="true">
-                    <span class="toggle-thumb">
-                      <span
-                        data-icon="check"
-                        data-icon-class="toggle-thumb-icon toggle-thumb-icon--on"
-                        aria-hidden="true"
-                      ></span>
-                    </span>
-                  </span>
-                  <span class="toggle-label">Comma first</span>
-                </button>
-                <input type="hidden" class="toggle-value" value="false" />
-              </div>
-            </div>
+            <h2 id="config-heading">Column types</h2>
             <div class="converter-config-list" id="config-columns" role="list"></div>
           </section>
 
@@ -259,7 +166,7 @@
                 role="toolbar"
                 aria-label="Output table actions"
               >
-                <button type="button" class="btn converter-pane-action" id="output-tabular-copy" aria-label="Copy table" data-tooltip="Copy for Excel" data-tooltip-position="top">
+                <button type="button" class="btn" id="output-tabular-copy" aria-label="Copy table" data-tooltip="Copy for Excel" data-tooltip-position="top">
                   <span data-icon="copy" data-icon-class="btn-icon-svg" aria-hidden="true"></span>
                   <span class="converter-pane-action-label">Copy</span>
                 </button>
@@ -281,23 +188,100 @@
             </div>
             <div id="output-code-wrap">
               <div
-                class="converter-pane-actions"
-                id="output-code-actions"
-                role="toolbar"
-                aria-label="Output code actions"
+                class="converter-output-code-extras"
+                id="output-code-extras"
+                hidden
               >
-                <button type="button" class="btn converter-pane-action" id="output-code-copy" aria-label="Copy output code">
-                  <span data-icon="copy" data-icon-class="btn-icon-svg" aria-hidden="true"></span>
-                  <span class="converter-pane-action-label">Copy</span>
+              <div
+                class="toggle toggle--slim"
+                id="comma-first-toggle"
+                data-toggle-default="false"
+              >
+                <button
+                  type="button"
+                  class="toggle-btn"
+                  role="switch"
+                  aria-checked="false"
+                  data-tooltip="Use leading commas"
+                  data-tooltip-position="top"
+                >
+                  <span class="toggle-track" aria-hidden="true">
+                    <span class="toggle-thumb">
+                      <span
+                        data-icon="check"
+                        data-icon-class="toggle-thumb-icon toggle-thumb-icon--on"
+                        aria-hidden="true"
+                      ></span>
+                    </span>
+                  </span>
+                  <span class="toggle-label">Leading comma</span>
                 </button>
+                <input type="hidden" class="toggle-value" value="false" />
+              </div>
+                <div
+                  class="toggle toggle--slim"
+                  id="align-commas-toggle"
+                  data-toggle-default="false"
+                >
+                  <button
+                    type="button"
+                    class="toggle-btn"
+                    role="switch"
+                    aria-checked="false"
+                    data-tooltip="Pad fields to line up output in columns"
+                    data-tooltip-position="top"
+                  >
+                    <span class="toggle-track" aria-hidden="true">
+                      <span class="toggle-thumb">
+                        <span
+                          data-icon="check"
+                          data-icon-class="toggle-thumb-icon toggle-thumb-icon--on"
+                          aria-hidden="true"
+                        ></span>
+                      </span>
+                    </span>
+                    <span class="toggle-label">Align commas</span>
+                  </button>
+                  <input type="hidden" class="toggle-value" value="false" />
+                </div>
+                <div
+                  class="toggle toggle--slim"
+                  id="minimised-output-toggle"
+                  data-toggle-default="false"
+                >
+                  <button
+                    type="button"
+                    class="toggle-btn"
+                    role="switch"
+                    aria-checked="false"
+                    data-tooltip="Keep column definitions on a single line"
+                    data-tooltip-position="top"
+                  >
+                    <span class="toggle-track" aria-hidden="true">
+                      <span class="toggle-thumb">
+                        <span
+                          data-icon="check"
+                          data-icon-class="toggle-thumb-icon toggle-thumb-icon--on"
+                          aria-hidden="true"
+                        ></span>
+                      </span>
+                    </span>
+                    <span class="toggle-label">Minimised output</span>
+                  </button>
+                  <input type="hidden" class="toggle-value" value="false" />
+                </div>
               </div>
               <div
-                class="code-block code-block--wide"
+                class="code-block code-block--full"
                 id="output-code"
                 data-code-mode="select"
-                data-code-copy="false"
+                data-code-toolbar="top"
+                data-code-toolbar-actions="copy,maximize"
+                data-code-surface-actions="none"
+                data-expandable-surface
+                data-expandable-surface-label="Output code"
               >
-                <div class="code-block-body">
+                <div class="code-block-body" data-expandable-surface-trigger>
                   <pre class="line-numbers language-dax"><code class="language-dax"></code></pre>
                 </div>
               </div>
@@ -306,6 +290,76 @@
         </div>
       </section>
     </main>
+
+      <div
+        id="about-dialog"
+        class="modal hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="about-dialog-title"
+        hidden
+      >
+        <div class="modal-backdrop" data-dialog-close></div>
+        <div class="modal-panel">
+          <div class="modal-header">
+            <h2 id="about-dialog-title">What does this do?</h2>
+            <button type="button" class="modal-close" aria-label="Close" data-dialog-close>&times;</button>
+          </div>
+          <div class="modal-body">
+            <p>
+              Tabulator provides <b>a simple way to generate static tables</b> for use in Power BI and Excel.
+            </p>
+            <p>
+              By enterring or pasting tabular data, you can choose between the two output languages with
+              various output format options.
+              Reverse conversion is also supported.
+            </p>
+            <div class="about-extra-content" data-about-extra>
+              <div
+                class="about-extra-block hidden"
+                data-about-stage
+                data-about-next-label="Uhh…"
+                hidden
+              >
+                <p>
+                  <em>Okay</em>, so you have rows and columns. DAX and M want
+                  that same grid written as code, but that's a lot of work. 
+                  Let Tabulator do the heavy work for you.
+                </p>
+              </div>
+              <div class="about-extra-block hidden" data-about-stage hidden>
+                <p>
+                  Have table. Need different. Put table. Mash button. Is done.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn" data-about-confused>Huh?</button>
+            <a
+              href="https://pbskids.org/games/play/dress-up-time/8573"
+              class="btn hidden"
+              data-about-final
+              data-no-external-icon
+              hidden
+            >I don't get it</a>
+            <div class="modal-footer-actions">
+              <button
+                type="button"
+                id="start-tour-btn"
+                class="btn"
+                data-dialog-close
+              >Guided tour</button>
+              <button
+                type="button"
+                class="btn btn-primary"
+                data-dialog-close
+                data-dialog-default
+              >Got it</button>
+            </div>
+          </div>
+        </div>
+      </div>
 
     <script defer src="app/vendor/prism/prism.min.js"></script>
     <script defer src="app/vendor/prism/prism-dax.min.js"></script>
