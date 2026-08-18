@@ -72,6 +72,8 @@ Optional `renderPageShell({ repoUrl, appUrl, brandUrl, brandName, alsoSee, alsoS
 | `setHidden()` / `parseBooleanAttr()` | Toggle visibility — always sets **both** `.hidden` class and `hidden` attribute; parse HTML boolean `data-*` values |
 | `initPopupMenu()` | Anchored popup menus (dropdown, also-see, tabular-input type menu) |
 | `initDropdown()` | Single-select dropdown menu |
+| `initAboutDialog()` | Tagline “What?” dialog with optional Huh? stages |
+| `initTutorial()` | Spotlight guided tour (popover steps) |
 | `initToggle()` / `initToggles()` | On/off switch control; optional `data-toggle-tristate` for off → on → mixed |
 | `initSegmentedControl()` / `initSegmentedControls()` | Segmented control (toggle button group) |
 | `initTable()` / `initTables()` | Data table with optional sortable columns and row selection |

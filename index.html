@@ -20,7 +20,10 @@
         <img class="site-logo" src="app/res/app.svg" alt="Power BI Tabulator" width="40" height="40" />
         <h1>Power BI Tabulator</h1>
       </div>
-      <p class="tagline">Convert between a table, DAX, and Power Query M</p>
+      <p class="tagline">
+        <em>Spectabular</em> conversion for <code>DAX</code> and Power Query <code>M</code>.
+        <button type="button" id="about-open-btn" class="btn btn-link tagline-link">What?</button>
+      </p>
     </header>
 
     <main id="main">
@@ -287,6 +290,76 @@
         </div>
       </section>
     </main>
+
+      <div
+        id="about-dialog"
+        class="modal hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="about-dialog-title"
+        hidden
+      >
+        <div class="modal-backdrop" data-dialog-close></div>
+        <div class="modal-panel">
+          <div class="modal-header">
+            <h2 id="about-dialog-title">What does this do?</h2>
+            <button type="button" class="modal-close" aria-label="Close" data-dialog-close>&times;</button>
+          </div>
+          <div class="modal-body">
+            <p>
+              Tabulator provides <b>a simple way to generate static tables</b> for use in Power BI and Excel.
+            </p>
+            <p>
+              By enterring or pasting tabular data, you can choose between the two output languages with
+              various output format options.
+              Reverse conversion is also supported.
+            </p>
+            <div class="about-extra-content" data-about-extra>
+              <div
+                class="about-extra-block hidden"
+                data-about-stage
+                data-about-next-label="Uhh…"
+                hidden
+              >
+                <p>
+                  <em>Okay</em>, so you have rows and columns. DAX and M want
+                  that same grid written as code, but that's a lot of work. 
+                  Let Tabulator do the heavy work for you.
+                </p>
+              </div>
+              <div class="about-extra-block hidden" data-about-stage hidden>
+                <p>
+                  Have table. Need different. Put table. Mash button. Is done.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn" data-about-confused>Huh?</button>
+            <a
+              href="https://pbskids.org/games/play/dress-up-time/8573"
+              class="btn hidden"
+              data-about-final
+              data-no-external-icon
+              hidden
+            >I don't get it</a>
+            <div class="modal-footer-actions">
+              <button
+                type="button"
+                id="start-tour-btn"
+                class="btn"
+                data-dialog-close
+              >Guided tour</button>
+              <button
+                type="button"
+                class="btn btn-primary"
+                data-dialog-close
+                data-dialog-default
+              >Got it</button>
+            </div>
+          </div>
+        </div>
+      </div>
 
     <script defer src="app/vendor/prism/prism.min.js"></script>
     <script defer src="app/vendor/prism/prism-dax.min.js"></script>
