@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 2,
+  "templateVersion": "0.12.1",
+  "source": "filcuk/sma1-framework",
+  "components": [
+    "code-block",
+    "dropdown",
+    "fields",
+    "segmented-control",
+    "table",
+    "tabular-input",
+    "toggle"
+  ],
+  "skills": ["*"]
+}
