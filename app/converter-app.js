@@ -139,6 +139,54 @@ function prismLanguage(lang) {
   return null;
 }
 
+/**
+ * Code-block language is fixed at init. Remount when DAX vs M highlighting changes.
+ * @param {HTMLElement | null} el
+ * @param {{ mode?: string }} options
+ */
+function initConverterCodeBlock(el, options) {
+  if (!(el instanceof HTMLElement)) return null;
+
+  /** @type {ReturnType<typeof initCodeBlock> | null} */
+  let instance = initCodeBlock(el, options);
+
+  return {
+    getSource() {
+      return instance?.getSource() ?? "";
+    },
+    setSource(next) {
+      instance?.setSource(next);
+    },
+    /**
+     * @param {string} language
+     */
+    setLanguage(language) {
+      const current = el
+        .querySelector("code")
+        ?.className.match(/language-([\w-]+)/)?.[1];
+      if (!language || current === language) return;
+
+      const source = instance?.getSource() ?? "";
+      const mode = instance?.getMode() ?? options.mode;
+      delete el.dataset.codeBlockInit;
+      el.replaceChildren();
+
+      const body = document.createElement("div");
+      body.className = "code-block-body";
+      const pre = document.createElement("pre");
+      pre.className = `line-numbers language-${language}`;
+      const code = document.createElement("code");
+      code.className = `language-${language}`;
+      pre.append(code);
+      body.append(pre);
+      el.append(body);
+
+      instance = initCodeBlock(el, { ...options, mode });
+      instance?.setSource(source);
+    },
+  };
+}
+
 const SAMPLE = normalizeTable({
   columns: [
     { id: "name", label: "Name", type: "text" },
@@ -322,11 +370,11 @@ export function initConverterApp({ root = document } = {}) {
     },
   });
 
-  const inputCode = initCodeBlock(root.querySelector("#input-code"), {
+  const inputCode = initConverterCodeBlock(root.querySelector("#input-code"), {
     mode: "edit",
   });
 
-  const outputCode = initCodeBlock(root.querySelector("#output-code"), {
+  const outputCode = initConverterCodeBlock(root.querySelector("#output-code"), {
     mode: "select",
   });
 

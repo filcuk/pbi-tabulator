@@ -83,6 +83,7 @@
 .converter-pane .tabular-input:not(.tabular-input--breakout),
 .converter-pane .table-block {
   width: 100%;
+  max-width: none;
 }
 
 .converter-config-hint {
