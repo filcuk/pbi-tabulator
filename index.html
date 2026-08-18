@@ -36,7 +36,9 @@
       </div>
 
       <section class="converter" aria-label="Table converter">
-        <div class="converter-toolbar">
+        <section class="converter-pane" aria-labelledby="conversion-heading">
+          <h2 id="conversion-heading">Conversion</h2>
+          <div class="converter-toolbar">
           <div class="converter-field">
             <span class="converter-field-label" id="source-label">Source</span>
             <div
@@ -112,7 +114,8 @@
               <input type="hidden" class="segmented-control-value" name="m-dialect" value="table" />
             </div>
           </div>
-        </div>
+          </div>
+        </section>
 
         <div class="converter-panes">
           <section class="converter-pane" aria-labelledby="input-heading">
@@ -148,10 +151,7 @@
             id="config-section"
             aria-labelledby="config-heading"
           >
-            <h2 id="config-heading">Configuration</h2>
-            <p class="converter-config-hint">
-              Configure column types.
-            </p>
+            <h2 id="config-heading">Column types</h2>
             <div class="converter-config-list" id="config-columns" role="list"></div>
           </section>
 
@@ -164,7 +164,7 @@
                 role="toolbar"
                 aria-label="Output table actions"
               >
-                <button type="button" class="btn converter-pane-action" id="output-tabular-copy" aria-label="Copy table" data-tooltip="Copy for Excel" data-tooltip-position="top">
+                <button type="button" class="btn" id="output-tabular-copy" aria-label="Copy table" data-tooltip="Copy for Excel" data-tooltip-position="top">
                   <span data-icon="copy" data-icon-class="btn-icon-svg" aria-hidden="true"></span>
                   <span class="converter-pane-action-label">Copy</span>
                 </button>
@@ -190,6 +190,32 @@
                 id="output-code-extras"
                 hidden
               >
+              <div
+                class="toggle toggle--slim"
+                id="comma-first-toggle"
+                data-toggle-default="false"
+              >
+                <button
+                  type="button"
+                  class="toggle-btn"
+                  role="switch"
+                  aria-checked="false"
+                  data-tooltip="Use leading commas"
+                  data-tooltip-position="top"
+                >
+                  <span class="toggle-track" aria-hidden="true">
+                    <span class="toggle-thumb">
+                      <span
+                        data-icon="check"
+                        data-icon-class="toggle-thumb-icon toggle-thumb-icon--on"
+                        aria-hidden="true"
+                      ></span>
+                    </span>
+                  </span>
+                  <span class="toggle-label">Leading comma</span>
+                </button>
+                <input type="hidden" class="toggle-value" value="false" />
+              </div>
                 <div
                   class="toggle toggle--slim"
                   id="align-commas-toggle"
@@ -212,7 +238,7 @@
                         ></span>
                       </span>
                     </span>
-                    <span class="toggle-label">Align output</span>
+                    <span class="toggle-label">Align commas</span>
                   </button>
                   <input type="hidden" class="toggle-value" value="false" />
                 </div>
@@ -239,32 +265,6 @@
                       </span>
                     </span>
                     <span class="toggle-label">Minimised output</span>
-                  </button>
-                  <input type="hidden" class="toggle-value" value="false" />
-                </div>
-                <div
-                  class="toggle toggle--slim"
-                  id="comma-first-toggle"
-                  data-toggle-default="false"
-                >
-                  <button
-                    type="button"
-                    class="toggle-btn"
-                    role="switch"
-                    aria-checked="false"
-                    data-tooltip="Use leading commas"
-                    data-tooltip-position="top"
-                  >
-                    <span class="toggle-track" aria-hidden="true">
-                      <span class="toggle-thumb">
-                        <span
-                          data-icon="check"
-                          data-icon-class="toggle-thumb-icon toggle-thumb-icon--on"
-                          aria-hidden="true"
-                        ></span>
-                      </span>
-                    </span>
-                    <span class="toggle-label">Comma first</span>
                   </button>
                   <input type="hidden" class="toggle-value" value="false" />
                 </div>

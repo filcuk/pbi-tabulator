@@ -4,6 +4,7 @@
 
 import { setHidden } from "./utils/dom.js";
 import { initSegmentedControl } from "./components/segmented-control.js";
+import { initDropdown } from "./components/dropdown.js";
 import {
   formatClipboardTable,
   initTabularInput,
@@ -344,6 +345,13 @@ export function initConverterApp({ root = document } = {}) {
 
   /** @type {Map<string, ColumnTypeConfig>} */
   const typeConfig = new Map();
+  /** @type {Array<ReturnType<typeof initDropdown>>} */
+  let configDropdowns = [];
+
+  function destroyConfigDropdowns() {
+    for (const dropdown of configDropdowns) dropdown?.destroy?.();
+    configDropdowns = [];
+  }
 
   const inputTabular = initTabularInput(root.querySelector("#input-tabular"), {
     columns: model.columns,
@@ -648,8 +656,86 @@ export function initConverterApp({ root = document } = {}) {
     });
   }
 
+  /**
+   * @param {import("./convert/model.js").Column} col
+   * @param {ColumnTypeConfig} cfg
+   * @param {readonly import("./convert/output-types.js").OutputTypeOption[]} options
+   */
+  function createTypeDropdown(col, cfg, options) {
+    const selected =
+      options.find((opt) => opt.value === cfg.outputType) ?? {
+        value: cfg.outputType,
+        label: cfg.outputType,
+      };
+    const menuOptions = options.some((opt) => opt.value === selected.value)
+      ? options
+      : [...options, selected];
+    const menuId = `converter-config-type-menu-${col.id}`;
+
+    const dropdown = document.createElement("div");
+    dropdown.className = "dropdown converter-config-type";
+
+    const trigger = document.createElement("button");
+    trigger.type = "button";
+    trigger.className = "btn dropdown-trigger";
+    trigger.setAttribute("aria-haspopup", "menu");
+    trigger.setAttribute("aria-expanded", "false");
+    trigger.setAttribute("aria-controls", menuId);
+    trigger.setAttribute(
+      "aria-label",
+      `Output type for ${col.label || col.id}`
+    );
+
+    const triggerLabel = document.createElement("span");
+    triggerLabel.className = "dropdown-trigger-label";
+    triggerLabel.textContent = selected.label;
+
+    const chevron = document.createElement("span");
+    chevron.className = "combo-btn-chevron";
+    chevron.setAttribute("aria-hidden", "true");
+    trigger.append(triggerLabel, chevron);
+
+    const menu = document.createElement("ul");
+    menu.id = menuId;
+    menu.className = "dropdown-menu hidden";
+    menu.setAttribute("role", "menu");
+    setHidden(menu, true);
+
+    for (const opt of menuOptions) {
+      const li = document.createElement("li");
+      li.setAttribute("role", "none");
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = "dropdown-menu-item";
+      item.setAttribute("role", "menuitem");
+      item.dataset.value = opt.value;
+      item.textContent = opt.label;
+      if (opt.value === selected.value) item.classList.add("is-selected");
+      li.append(item);
+      menu.append(li);
+    }
+
+    dropdown.append(trigger, menu);
+
+    const api = initDropdown(dropdown, {
+      onSelect({ value }) {
+        if (!value) return;
+        const prev = typeConfig.get(col.id);
+        if (prev?.outputType === value && prev.locked) return;
+        typeConfig.set(col.id, { outputType: value, locked: true });
+        renderConfigUi();
+        void runConvert();
+      },
+    });
+    if (api) configDropdowns.push(api);
+
+    return dropdown;
+  }
+
   function renderConfigUi() {
     if (!configColumnsEl) return;
+
+    destroyConfigDropdowns();
 
     const lang = configLang();
     if (!lang || !typesConfigVisible()) {
@@ -717,41 +803,7 @@ export function initConverterApp({ root = document } = {}) {
       }
 
       head.append(name, lock);
-
-      const select = document.createElement("select");
-      select.className = "input converter-config-type";
-      select.dataset.columnId = col.id;
-      select.setAttribute(
-        "aria-label",
-        `Output type for ${col.label || col.id}`
-      );
-
-      for (const opt of options) {
-        const option = document.createElement("option");
-        option.value = opt.value;
-        option.textContent = opt.label;
-        if (opt.value === cfg.outputType) option.selected = true;
-        select.append(option);
-      }
-
-      if (!options.some((opt) => opt.value === cfg.outputType)) {
-        const option = document.createElement("option");
-        option.value = cfg.outputType;
-        option.textContent = cfg.outputType;
-        option.selected = true;
-        select.append(option);
-      }
-
-      select.addEventListener("change", () => {
-        typeConfig.set(col.id, {
-          outputType: select.value,
-          locked: true,
-        });
-        renderConfigUi();
-        void runConvert();
-      });
-
-      cell.append(head, select);
+      cell.append(head, createTypeDropdown(col, cfg, options));
       frag.append(cell);
     }
 
