@@ -13,7 +13,7 @@ Bidirectional converter between tabular data, DAX, and Power Query M.
 | [`app/convert/index.js`](app/convert/index.js) | Facade: `parse(lang, text)`, `generate(lang, dialect, table)` |
 | [`app/components/tabular-input.js`](app/components/tabular-input.js) | Editable typed grid (canonical model shape) |
 
-Canonical table shape: `{ columns: [{ id, label, type, outputType? }], rows: [{ id, cells }] }` with types `text` | `number` | `logical`. Optional `outputType` is the exact DAX/M type used when generating (see `app/convert/output-types.js`). When source is tabular and target is DAX/M, the Configuration section lets users override per-column output types; auto-detected until manually changed (then locked). Column type overrides are hidden for M `from-records` (no type clause). **Align output** (default off) pads fields so commas line up across rows. **Minimised output** (default off) puts column definitions on a single line. **Comma first** (default off) puts the comma at the start of each new line instead of trailing the previous one. The tabular input **breaks out centered** to the canvas when columns exceed the page body (toggle to constrain; control only while overflowing).
+Canonical table shape: `{ columns: [{ id, label, type, outputType? }], rows: [{ id, cells }] }` with types `text` | `number` | `logical`. Optional `outputType` is the exact DAX/M type used when generating (see `app/convert/output-types.js`). When source is tabular and target is DAX/M, the Configuration section lets users override per-column output types; auto-detected until manually changed (then locked). Column type overrides are hidden for M `from-records` (no type clause). **Align output**, **Minimised output**, and **Comma first** live on the output code-block toolbar (defaults off). Source DAX/M uses the input code-block toolbar for Clear, Copy, Paste, and Maximize. The tabular input **breaks out centered** to the canvas when columns exceed the page body (toggle to constrain; control only while overflowing).
 
 DAX dialects: `datatable`, `constructor`, `union-row`. 
 M dialects: `table`, `from-records`, `binary-from-text`.
@@ -65,6 +65,7 @@ Optional `renderPageShell({ repoUrl, appUrl, brandUrl, brandName, alsoSee, alsoS
 | `initExternalLinks(root)` | Append arrow-outward icon to external links |
 | `initHeadingLinks(root)` | Copy-link button on `main :is(h2, h3)[id]` headings |
 | `initCodeBlocks(root)` / `initCodeBlock(el)` | Prism code blocks with copy, modes, toolbar toggles |
+| `initExpandableSurface(el)` / `initExpandableSurfaces(root)` | Maximize `[data-expandable-surface]` to a page-width overlay |
 | `showBanner()` / `hideBanner()` | Show or hide `.banner` elements; respects `data-banner-expire` |
 | `initPageNav()` / `initPageNavPanel()` | Page nav only — requires `PAGE_NAV_MARKUP` from `app/shell/render-shell.js` |
 | `initStickyChrome()` / `setStickyHeader()` / `setStickySectionHeadings()` | Optional sticky site header and section headings (`data-sticky-header`, `data-sticky-section-headings`) |
@@ -114,7 +115,7 @@ Always use `setHidden()` from `app/utils/dom.js` when showing/hiding elements pr
 | `app/css/app.css` | Fork-owned styles (imports `converter.css`; never overwritten by sync) |
 | `app/css/converter.css` | Converter toolbar and two-pane layout |
 | `app/css/layout.css` | Page shell, sections, page nav, footer, theme toggle |
-| `app/css/code-block.css` | Code blocks |
+| `app/css/code-block.css` | Code blocks and expandable surfaces |
 | `app/css/controls-buttons.css` | Toolbar, buttons |
 | `app/css/controls-fields.css` | Fields / `.input` |
 | `app/css/controls-widgets.css` | Toggle, segmented control |

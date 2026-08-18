@@ -126,32 +126,17 @@
             </div>
             <div id="input-code-wrap" class="hidden" hidden>
               <div
-                class="converter-pane-actions"
-                id="input-code-actions"
-                role="toolbar"
-                aria-label="Source code actions"
-              >
-                <button type="button" class="btn converter-pane-action" id="input-code-clear" aria-label="Clear source code">
-                  <span data-icon="delete" data-icon-class="btn-icon-svg" aria-hidden="true"></span>
-                  <span class="converter-pane-action-label">Clear</span>
-                </button>
-                <button type="button" class="btn converter-pane-action" id="input-code-copy" aria-label="Copy source code">
-                  <span data-icon="copy" data-icon-class="btn-icon-svg" aria-hidden="true"></span>
-                  <span class="converter-pane-action-label">Copy</span>
-                </button>
-                <button type="button" class="btn converter-pane-action" id="input-code-paste" aria-label="Paste source code">
-                  <span data-icon="paste" data-icon-class="btn-icon-svg" aria-hidden="true"></span>
-                  <span class="converter-pane-action-label">Paste</span>
-                </button>
-              </div>
-              <div
                 class="code-block code-block--full"
                 id="input-code"
                 data-code-mode="edit"
-                data-code-copy="false"
+                data-code-toolbar="top"
+                data-code-toolbar-actions="clear,copy,paste,maximize"
+                data-code-surface-actions="none"
                 data-code-editor-label="Source code"
+                data-expandable-surface
+                data-expandable-surface-label="Source code"
               >
-                <div class="code-block-body">
+                <div class="code-block-body" data-expandable-surface-trigger>
                   <pre class="line-numbers language-dax"><code class="language-dax"></code></pre>
                 </div>
               </div>
@@ -165,88 +150,8 @@
           >
             <h2 id="config-heading">Configuration</h2>
             <p class="converter-config-hint">
-              Configure output style and column types.
+              Configure column types.
             </p>
-            <div class="converter-config-options">
-              <div
-                class="toggle"
-                id="align-commas-toggle"
-                data-toggle-default="false"
-              >
-                <button
-                  type="button"
-                  class="toggle-btn"
-                  role="switch"
-                  aria-checked="false"
-                  data-tooltip="Pad fields to line up output in columns"
-                  data-tooltip-position="top"
-                >
-                  <span class="toggle-track" aria-hidden="true">
-                    <span class="toggle-thumb">
-                      <span
-                        data-icon="check"
-                        data-icon-class="toggle-thumb-icon toggle-thumb-icon--on"
-                        aria-hidden="true"
-                      ></span>
-                    </span>
-                  </span>
-                  <span class="toggle-label">Align output</span>
-                </button>
-                <input type="hidden" class="toggle-value" value="false" />
-              </div>
-              <div
-                class="toggle"
-                id="minimised-output-toggle"
-                data-toggle-default="false"
-              >
-                <button
-                  type="button"
-                  class="toggle-btn"
-                  role="switch"
-                  aria-checked="false"
-                  data-tooltip="Keep column definitions on a single line"
-                  data-tooltip-position="top"
-                >
-                  <span class="toggle-track" aria-hidden="true">
-                    <span class="toggle-thumb">
-                      <span
-                        data-icon="check"
-                        data-icon-class="toggle-thumb-icon toggle-thumb-icon--on"
-                        aria-hidden="true"
-                      ></span>
-                    </span>
-                  </span>
-                  <span class="toggle-label">Minimised output</span>
-                </button>
-                <input type="hidden" class="toggle-value" value="false" />
-              </div>
-              <div
-                class="toggle"
-                id="comma-first-toggle"
-                data-toggle-default="false"
-              >
-                <button
-                  type="button"
-                  class="toggle-btn"
-                  role="switch"
-                  aria-checked="false"
-                  data-tooltip="Use leading commas"
-                  data-tooltip-position="top"
-                >
-                  <span class="toggle-track" aria-hidden="true">
-                    <span class="toggle-thumb">
-                      <span
-                        data-icon="check"
-                        data-icon-class="toggle-thumb-icon toggle-thumb-icon--on"
-                        aria-hidden="true"
-                      ></span>
-                    </span>
-                  </span>
-                  <span class="toggle-label">Comma first</span>
-                </button>
-                <input type="hidden" class="toggle-value" value="false" />
-              </div>
-            </div>
             <div class="converter-config-list" id="config-columns" role="list"></div>
           </section>
 
@@ -281,23 +186,100 @@
             </div>
             <div id="output-code-wrap">
               <div
-                class="converter-pane-actions"
-                id="output-code-actions"
-                role="toolbar"
-                aria-label="Output code actions"
+                class="converter-output-code-extras"
+                id="output-code-extras"
+                hidden
               >
-                <button type="button" class="btn converter-pane-action" id="output-code-copy" aria-label="Copy output code">
-                  <span data-icon="copy" data-icon-class="btn-icon-svg" aria-hidden="true"></span>
-                  <span class="converter-pane-action-label">Copy</span>
-                </button>
+                <div
+                  class="toggle toggle--slim"
+                  id="align-commas-toggle"
+                  data-toggle-default="false"
+                >
+                  <button
+                    type="button"
+                    class="toggle-btn"
+                    role="switch"
+                    aria-checked="false"
+                    data-tooltip="Pad fields to line up output in columns"
+                    data-tooltip-position="top"
+                  >
+                    <span class="toggle-track" aria-hidden="true">
+                      <span class="toggle-thumb">
+                        <span
+                          data-icon="check"
+                          data-icon-class="toggle-thumb-icon toggle-thumb-icon--on"
+                          aria-hidden="true"
+                        ></span>
+                      </span>
+                    </span>
+                    <span class="toggle-label">Align output</span>
+                  </button>
+                  <input type="hidden" class="toggle-value" value="false" />
+                </div>
+                <div
+                  class="toggle toggle--slim"
+                  id="minimised-output-toggle"
+                  data-toggle-default="false"
+                >
+                  <button
+                    type="button"
+                    class="toggle-btn"
+                    role="switch"
+                    aria-checked="false"
+                    data-tooltip="Keep column definitions on a single line"
+                    data-tooltip-position="top"
+                  >
+                    <span class="toggle-track" aria-hidden="true">
+                      <span class="toggle-thumb">
+                        <span
+                          data-icon="check"
+                          data-icon-class="toggle-thumb-icon toggle-thumb-icon--on"
+                          aria-hidden="true"
+                        ></span>
+                      </span>
+                    </span>
+                    <span class="toggle-label">Minimised output</span>
+                  </button>
+                  <input type="hidden" class="toggle-value" value="false" />
+                </div>
+                <div
+                  class="toggle toggle--slim"
+                  id="comma-first-toggle"
+                  data-toggle-default="false"
+                >
+                  <button
+                    type="button"
+                    class="toggle-btn"
+                    role="switch"
+                    aria-checked="false"
+                    data-tooltip="Use leading commas"
+                    data-tooltip-position="top"
+                  >
+                    <span class="toggle-track" aria-hidden="true">
+                      <span class="toggle-thumb">
+                        <span
+                          data-icon="check"
+                          data-icon-class="toggle-thumb-icon toggle-thumb-icon--on"
+                          aria-hidden="true"
+                        ></span>
+                      </span>
+                    </span>
+                    <span class="toggle-label">Comma first</span>
+                  </button>
+                  <input type="hidden" class="toggle-value" value="false" />
+                </div>
               </div>
               <div
                 class="code-block code-block--full"
                 id="output-code"
                 data-code-mode="select"
-                data-code-copy="false"
+                data-code-toolbar="top"
+                data-code-toolbar-actions="copy,maximize"
+                data-code-surface-actions="none"
+                data-expandable-surface
+                data-expandable-surface-label="Output code"
               >
-                <div class="code-block-body">
+                <div class="code-block-body" data-expandable-surface-trigger>
                   <pre class="line-numbers language-dax"><code class="language-dax"></code></pre>
                 </div>
               </div>

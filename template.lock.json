@@ -5,6 +5,7 @@
   "components": [
     "code-block",
     "dropdown",
+    "expandable-surface",
     "fields",
     "segmented-control",
     "table",

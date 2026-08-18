@@ -79,6 +79,22 @@
   display: block;
 }
 
+.converter-output-code-extras {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.85rem;
+  margin-inline-start: 1rem;
+}
+
+.converter-output-code-extras .toggle-btn {
+  min-height: 0;
+}
+
+.converter-output-code-extras .toggle-label {
+  font-size: 0.8125rem;
+}
+
 .converter-pane .code-block,
 .converter-pane .tabular-input:not(.tabular-input--breakout),
 .converter-pane .table-block {
@@ -86,18 +102,20 @@
   max-width: none;
 }
 
+#output-code.code-block {
+  overflow: visible;
+}
+
+#output-code .code-block-body {
+  overflow: hidden;
+  border-radius: 0 0 6px 6px;
+}
+
 .converter-config-hint {
   margin: 0;
   font-size: 0.8125rem;
   color: var(--muted);
   line-height: 1.4;
-}
-
-.converter-config-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem 1.25rem;
-  align-items: center;
 }
 
 .converter-config-list {

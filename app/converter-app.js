@@ -3,7 +3,6 @@
  */
 
 import { setHidden } from "./utils/dom.js";
-import { onDocumentEscape } from "./utils/document-listeners.js";
 import { initSegmentedControl } from "./components/segmented-control.js";
 import {
   formatClipboardTable,
@@ -11,6 +10,7 @@ import {
 } from "./components/tabular-input.js";
 import { initTable } from "./components/table.js";
 import { initCodeBlock } from "./components/code-block.js";
+import { initExpandableSurface } from "./components/expandable-surface.js";
 import { initToggle } from "./components/toggle.js";
 import { showBanner, hideBanner } from "./components/banner.js";
 import {
@@ -73,39 +73,6 @@ async function copyTextToClipboard(text) {
 }
 
 /**
- * Read plain text from the clipboard (Clipboard API).
- * Returns `null` when unavailable or denied.
- * @returns {Promise<string | null>}
- */
-async function readTextFromClipboard() {
-  if (!window.isSecureContext || !navigator.clipboard) return null;
-
-  if (typeof navigator.clipboard.readText === "function") {
-    try {
-      return await navigator.clipboard.readText();
-    } catch {
-      // NotAllowedError / permission — try read() or paste-event fallback.
-    }
-  }
-
-  if (typeof navigator.clipboard.read === "function") {
-    try {
-      const items = await navigator.clipboard.read();
-      for (const item of items) {
-        if (!item.types.includes("text/plain")) continue;
-        const blob = await item.getType("text/plain");
-        return await blob.text();
-      }
-      return "";
-    } catch {
-      return null;
-    }
-  }
-
-  return null;
-}
-
-/**
  * Flash a temporary label on a pane action button.
  * @param {HTMLButtonElement | null} button
  * @param {string} text
@@ -142,13 +109,27 @@ function prismLanguage(lang) {
 /**
  * Code-block language is fixed at init. Remount when DAX vs M highlighting changes.
  * @param {HTMLElement | null} el
- * @param {{ mode?: string }} options
+ * @param {Parameters<typeof initCodeBlock>[1]} options
+ * @param {{ onReady?: (el: HTMLElement) => void, onBeforeRemount?: (el: HTMLElement) => void }} [hooks]
  */
-function initConverterCodeBlock(el, options) {
+function initConverterCodeBlock(el, options, hooks = {}) {
   if (!(el instanceof HTMLElement)) return null;
 
   /** @type {ReturnType<typeof initCodeBlock> | null} */
-  let instance = initCodeBlock(el, options);
+  let instance = null;
+  /** @type {ReturnType<typeof initExpandableSurface> | null} */
+  let expandInstance = null;
+
+  function bind() {
+    instance = initCodeBlock(el, options);
+    expandInstance?.destroy();
+    expandInstance = el.hasAttribute("data-expandable-surface")
+      ? initExpandableSurface(el)
+      : null;
+    hooks.onReady?.(el);
+  }
+
+  bind();
 
   return {
     getSource() {
@@ -168,11 +149,17 @@ function initConverterCodeBlock(el, options) {
 
       const source = instance?.getSource() ?? "";
       const mode = instance?.getMode() ?? options.mode;
+      hooks.onBeforeRemount?.(el);
+      expandInstance?.destroy();
+      expandInstance = null;
       delete el.dataset.codeBlockInit;
       el.replaceChildren();
 
       const body = document.createElement("div");
       body.className = "code-block-body";
+      if (el.hasAttribute("data-expandable-surface")) {
+        body.setAttribute("data-expandable-surface-trigger", "");
+      }
       const pre = document.createElement("pre");
       pre.className = `line-numbers language-${language}`;
       const code = document.createElement("code");
@@ -181,7 +168,8 @@ function initConverterCodeBlock(el, options) {
       body.append(pre);
       el.append(body);
 
-      instance = initCodeBlock(el, { ...options, mode });
+      bind();
+      instance?.setMode(mode);
       instance?.setSource(source);
     },
   };
@@ -370,116 +358,96 @@ export function initConverterApp({ root = document } = {}) {
     },
   });
 
-  const inputCode = initConverterCodeBlock(root.querySelector("#input-code"), {
+  const inputCodeEl = root.querySelector("#input-code");
+  const inputCode = initConverterCodeBlock(inputCodeEl, {
     mode: "edit",
+    toolbar: "top",
+    toolbarActions: ["clear", "copy", "paste", "maximize"],
+    surfaceActions: "none",
   });
 
-  const outputCode = initConverterCodeBlock(root.querySelector("#output-code"), {
-    mode: "select",
-  });
+  const outputCodeEl = root.querySelector("#output-code");
+  const outputCodeExtras = root.querySelector("#output-code-extras");
 
-  const inputCodeClearBtn = root.querySelector("#input-code-clear");
-  const inputCodeCopyBtn = root.querySelector("#input-code-copy");
-  const inputCodePasteBtn = root.querySelector("#input-code-paste");
+  function parkOutputCodeExtras() {
+    if (!(outputCodeExtras instanceof HTMLElement) || !outputCodeWrap) return;
+    outputCodeWrap.append(outputCodeExtras);
+    setHidden(outputCodeExtras, true);
+  }
+
+  function attachOutputCodeExtras() {
+    const left = outputCodeEl?.querySelector(
+      ".code-block-toolbar__group--left"
+    );
+    if (!(outputCodeExtras instanceof HTMLElement) || !left) return;
+    left.append(outputCodeExtras);
+    setHidden(outputCodeExtras, false);
+  }
+
+  const outputCode = initConverterCodeBlock(
+    outputCodeEl,
+    {
+      mode: "select",
+      toolbar: "top",
+      toolbarActions: ["copy", "maximize"],
+      surfaceActions: "none",
+    },
+    {
+      onBeforeRemount: parkOutputCodeExtras,
+      onReady: attachOutputCodeExtras,
+    }
+  );
+
   const outputTabularCopyBtn = root.querySelector("#output-tabular-copy");
-  const outputCodeCopyBtn = root.querySelector("#output-code-copy");
 
-  /** @type {{ current: ReturnType<typeof setTimeout> | null }} */
-  const inputCopyFlash = { current: null };
-  /** @type {{ current: ReturnType<typeof setTimeout> | null }} */
-  const inputPasteFlash = { current: null };
   /** @type {{ current: ReturnType<typeof setTimeout> | null }} */
   const outputTabularCopyFlash = { current: null };
-  /** @type {{ current: ReturnType<typeof setTimeout> | null }} */
-  const outputCodeCopyFlash = { current: null };
 
-  /** @type {{ cleanup: () => void, resolve: (text: string | null) => void } | null} */
-  let pasteCaptureSession = null;
+  /** @type {MutationObserver | null} */
+  let inputPasteSourceObserver = null;
+  /** @type {ReturnType<typeof setTimeout> | null} */
+  let inputPasteSourceTimer = null;
 
-  function endPasteCapture(text) {
-    const session = pasteCaptureSession;
-    if (!session) return;
-    pasteCaptureSession = null;
-    session.cleanup();
-    session.resolve(text);
+  function stopWatchingInputPaste() {
+    inputPasteSourceObserver?.disconnect();
+    inputPasteSourceObserver = null;
+    if (inputPasteSourceTimer !== null) {
+      clearTimeout(inputPasteSourceTimer);
+      inputPasteSourceTimer = null;
+    }
   }
 
   /**
-   * When Clipboard API read is blocked, arm a one-shot document paste listener.
-   * @param {HTMLButtonElement} button
-   * @returns {Promise<string | null>}
+   * Toolbar clear/paste do not fire `input` on the editor. Convert after those
+   * actions so the output stays in sync.
    */
-  function waitForPasteViaShortcut(button) {
-    endPasteCapture(null);
-
-    return new Promise((resolve) => {
-      const labelEl = button.querySelector(".converter-pane-action-label");
-      const previous = labelEl?.textContent ?? "Paste";
-      if (labelEl) labelEl.textContent = "Ctrl+V";
-      button.setAttribute("aria-label", "Press Control V to paste");
-
-      /** @param {ClipboardEvent} event */
-      function onPaste(event) {
-        const next = event.clipboardData?.getData("text/plain") ?? "";
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        endPasteCapture(next);
-      }
-
-      const removeEscape = onDocumentEscape(() => {
-        endPasteCapture(null);
-        return true;
-      }, { priority: 60 });
-
-      const timer = setTimeout(() => {
-        endPasteCapture(null);
-      }, 15000);
-
-      function cleanup() {
-        clearTimeout(timer);
-        document.removeEventListener("paste", onPaste, true);
-        removeEscape();
-        if (labelEl) labelEl.textContent = previous;
-        button.setAttribute("aria-label", "Paste source code");
-      }
-
-      pasteCaptureSession = { cleanup, resolve };
-      document.addEventListener("paste", onPaste, true);
-    });
-  }
-
-  inputCodeClearBtn?.addEventListener("click", () => {
-    inputCode?.setSource("");
-    scheduleConvert();
-  });
-
-  inputCodeCopyBtn?.addEventListener("click", async () => {
-    const text = inputCode?.getSource() ?? "";
-    const ok = await copyTextToClipboard(text);
-    flashActionLabel(
-      inputCodeCopyBtn,
-      ok ? "Copied" : "Failed",
-      "Copy",
-      inputCopyFlash
-    );
-  });
-
-  inputCodePasteBtn?.addEventListener("click", async () => {
-    if (pasteCaptureSession) {
-      endPasteCapture(null);
+  inputCodeEl?.addEventListener("click", (event) => {
+    const origin = event.target;
+    if (!(origin instanceof Element)) return;
+    const btn = origin.closest("[data-code-toolbar-action]");
+    if (!(btn instanceof HTMLButtonElement) || btn.disabled) return;
+    const action = btn.dataset.codeToolbarAction;
+    if (action === "clear") {
+      stopWatchingInputPaste();
+      scheduleConvert();
       return;
     }
+    if (action !== "paste") return;
 
-    const readPromise = readTextFromClipboard();
-    let text = await readPromise;
-    if (text === null) {
-      text = await waitForPasteViaShortcut(inputCodePasteBtn);
-      if (text === null) return;
-    }
+    const codeEl = inputCodeEl.querySelector("code");
+    if (!(codeEl instanceof HTMLElement)) return;
 
-    inputCode?.setSource(text);
-    flashActionLabel(inputCodePasteBtn, "Pasted", "Paste", inputPasteFlash);
-    scheduleConvert();
+    stopWatchingInputPaste();
+    inputPasteSourceObserver = new MutationObserver(() => {
+      stopWatchingInputPaste();
+      if (syncing || (source !== "dax" && source !== "m")) return;
+      scheduleConvert();
+    });
+    inputPasteSourceObserver.observe(codeEl, {
+      attributes: true,
+      attributeFilter: ["data-source"],
+    });
+    inputPasteSourceTimer = setTimeout(stopWatchingInputPaste, 16000);
   });
 
   outputTabularCopyBtn?.addEventListener("click", async () => {
@@ -490,17 +458,6 @@ export function initConverterApp({ root = document } = {}) {
       ok ? "Copied" : "Failed",
       "Copy",
       outputTabularCopyFlash
-    );
-  });
-
-  outputCodeCopyBtn?.addEventListener("click", async () => {
-    const text = outputCode?.getSource() ?? "";
-    const ok = await copyTextToClipboard(text);
-    flashActionLabel(
-      outputCodeCopyBtn,
-      ok ? "Copied" : "Failed",
-      "Copy",
-      outputCodeCopyFlash
     );
   });
 
@@ -606,7 +563,7 @@ export function initConverterApp({ root = document } = {}) {
   }
 
   function configVisible() {
-    return configLang() !== null;
+    return typesConfigVisible();
   }
 
   /** Column output types apply to DAX and typed M dialects (#table / Binary.FromText), not FromRecords. */
@@ -817,9 +774,7 @@ export function initConverterApp({ root = document } = {}) {
     setHidden(configSection, !configVisible());
     setHidden(configColumnsEl, !showTypes);
     if (configHint) {
-      configHint.textContent = showTypes
-        ? "Configure output style and column types."
-        : "Configure output style.";
+      configHint.textContent = "Configure column types.";
     }
 
     const inputLang = prismLanguage(source);
