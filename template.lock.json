@@ -11,5 +11,7 @@
     "tabular-input",
     "toggle"
   ],
-  "skills": ["*"]
+  "skills": [
+    "*"
+  ]
 }
