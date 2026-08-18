@@ -3,3 +3,11 @@
  * Add app-specific rules here (or pull in additional local sheets).
  */
 @import url("converter.css");
+
+:root {
+  --accent: #1b7a3a;
+}
+
+:root[data-theme="dark"] {
+  --accent: #3a9450;
+}
