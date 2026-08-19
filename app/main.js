@@ -37,6 +37,12 @@ initTutorial({
       position: "bottom",
     },
     {
+      target: ".tabular-input-footer-actions",
+      title: "Overwrite input",
+      body: "Or just paste over the existing data. The table will take the shape of your clipboard contents.",
+      position: "bottom",
+    },
+    {
       target: () => {
         const el = document.getElementById("config-section");
         if (!(el instanceof HTMLElement) || el.hidden) return null;
@@ -45,12 +51,6 @@ initTutorial({
       title: "Column types",
       body: "Optionally set the column types, which reflects in the output column definition. Tabulator will attempt to define the types automatically.",
       position: "bottom",
-    },
-    {
-      target: "section[aria-labelledby='output-heading']",
-      title: "Output options",
-      body: "Configure output formatting.",
-      position: "top",
     },
   ],
 });
