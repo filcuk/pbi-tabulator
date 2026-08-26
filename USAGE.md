@@ -49,26 +49,26 @@ initShell({
 });
 ```
 
-### App and template versions
+### App and framework versions
 
 Versions use [Semantic Versioning 2.0.0](https://semver.org/) and live in [`app/version.js`](app/version.js):
 
 ```javascript
-export const TEMPLATE_VERSION = "0.8.0"; // microapp-template release — sync with app/version.js
-export const APP_VERSION = "0.0.0";      // your app — bump when you ship
+export const FRAMEWORK_VERSION = "0.13.0"; // SMA1 Framework release — sync with app/version.js
+export const APP_VERSION = "0.0.0";        // your app — bump when you ship
 ```
 
 | Constant | Who sets it | Shown in UI |
 | -------- | ----------- | ----------- |
 | `APP_VERSION` | You, on your fork | Footer label (`v0.0.0`) |
-| `TEMPLATE_VERSION` | Template maintainers | Footer tooltip on hover/focus (`Template v0.8.0`) |
+| `FRAMEWORK_VERSION` | Framework maintainers | Footer tooltip on hover/focus (`SMA1 framework v0.13.0`) |
 
-After forking, set `APP_VERSION` to your app’s release (e.g. `1.0.0`). Bump it when you publish a new version of **your** app. When you pull updates from the upstream template, the maintainer may have raised `TEMPLATE_VERSION` — hover the footer version to see which template release you are on.
+After forking, set `APP_VERSION` to your app’s release (e.g. `1.0.0`). Bump it when you publish a new version of **your** app. When you pull updates from the upstream framework, the maintainer may have raised `FRAMEWORK_VERSION` — hover the footer version to see which framework release you are on.
 
 Optional runtime override (rare):
 
 ```javascript
-initShell({ appVersion: "1.2.3", templateVersion: "0.8.0" });
+initShell({ appVersion: "1.2.3", frameworkVersion: "0.13.0" });
 ```
 
 ### Configuration
@@ -230,7 +230,7 @@ app/
     table.css            # Data tables
     controls-tabular-input.css # Editable typed grid
   config.js             # Fork defaults (repo URL, brand, theme key)
-  version.js            # APP_VERSION + TEMPLATE_VERSION (SemVer 2.0.0)
+  version.js            # APP_VERSION + FRAMEWORK_VERSION (SemVer 2.0.0)
   main.js               # index.html entry
   demo.js               # demo.html entry (optional)
   shell/
@@ -278,7 +278,7 @@ Component CSS lives under `app/css/` (imported via `styles.css`). Match a compon
 | -------- | ----------- |
 | **Design tokens** | CSS custom properties in [`app/tokens.css`](app/tokens.css) for background, surface, section panels, `--input-bg` (form fields — lighter than page/section chrome), `--table-header-bg`, `--control-height` (single-line controls), text, borders, accent, banners, and code blocks. Light and dark values via `[data-theme="dark"]`. Component styles in [`app/css/`](app/css/) partials (imported by [`app/styles.css`](app/styles.css)). |
 | **Theme toggle** | Footer control (injected by `initShell()`): light, dark, or system (`auto`). Stored in `localStorage` under `microapp-theme`. `app/theme-init.js` runs in `<head>` to avoid flash of wrong theme. |
-| **Layout shell** | Semantic `header` / `main` / `footer` (footer rendered by JS), max-width 1200px, flex column page. App version in footer; template version on hover. Optional footer **also see** dropdown for related apps (`APP_CONFIG.alsoSee` / `alsoSeeUrl` / `alsoSeeTopics`, or `initShell({ alsoSee, alsoSeeUrl, alsoSeeTopics })`; `[]` / `false` disables when there is no remote list). Optional sticky site header (`data-sticky-header`) and sticky section headings (`data-sticky-section-headings`) — see **Sticky chrome**. |
+| **Layout shell** | Semantic `header` / `main` / `footer` (footer rendered by JS), max-width 1200px, flex column page. App version in footer; framework version on hover. Optional footer **also see** dropdown for related apps (`APP_CONFIG.alsoSee` / `alsoSeeUrl` / `alsoSeeTopics`, or `initShell({ alsoSee, alsoSeeUrl, alsoSeeTopics })`; `[]` / `false` disables when there is no remote list). Optional sticky site header (`data-sticky-header`) and sticky section headings (`data-sticky-section-headings`) — see **Sticky chrome**. |
 | **Buttons** | `.btn` (default), `.btn-primary`, `.btn-danger` (destructive primary), `.btn-icon`, `.btn-toggle` (`aria-pressed` — accent border when on), `.btn-link`, disabled state. |
 | **Badge** | Corner indicator on a control or text: normal readout or small `.badge--sm` dot. [`app/components/badge.js`](app/components/badge.js). |
 | **Chips** | Selectable filter tags and removable input chips. [`app/components/chip.js`](app/components/chip.js). |
