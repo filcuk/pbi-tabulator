@@ -18,6 +18,8 @@ export {
   tablesEqualByContent,
 } from "./model.js";
 
+export { getParseWarnings } from "./parse-warnings.js";
+
 export {
   DAX_OUTPUT_TYPES,
   M_OUTPUT_TYPES,

@@ -29,6 +29,7 @@ import {
   cloneTable,
   createEmptyTable,
   generate,
+  getParseWarnings,
   normalizeTable,
   parse,
 } from "./convert/index.js";
@@ -711,43 +712,50 @@ export function initConverterApp({ root = document } = {}) {
     if (errorBanner) showBanner(errorBanner);
   }
 
-  function clearMashupTextWarning() {
+  function clearInputWarnings() {
     if (warningBanner) hideBanner(warningBanner);
   }
 
   /**
-   * Warn when M target text cells exceed the Mashup Engine load limit.
+   * Input/output warnings: DAX/M shape/type consistency, Mashup text length.
    * @param {import("./convert/model.js").TableModel} table
    */
-  function updateMashupTextWarning(table) {
-    if (target !== "m") {
-      clearMashupTextWarning();
+  function updateInputWarnings(table) {
+    /** @type {string[]} */
+    const parts = [];
+
+    if (source === "dax" || source === "m") {
+      parts.push(...getParseWarnings(table));
+    }
+
+    if (target === "m") {
+      const labels = columnsWithOversizedMashupText(table, (col) => {
+        if (col.type === "text") return true;
+        if (!typesConfigVisible()) return false;
+        const cfg = typeConfig.get(col.id);
+        return cfg?.outputType === "text";
+      });
+      if (labels.length > 0) {
+        const list =
+          labels.length === 1
+            ? `"${labels[0]}"`
+            : labels.map((label) => `"${label}"`).join(", ");
+        const subject =
+          labels.length === 1
+            ? `Text in column ${list} exceeds`
+            : `Text in columns ${list} exceeds`;
+        parts.push(
+          `${subject} ${MASHUP_TEXT_CHAR_LIMIT.toLocaleString("en-GB")} characters and will be truncated by the Mashup Engine when loaded into the model.`
+        );
+      }
+    }
+
+    if (parts.length === 0) {
+      clearInputWarnings();
       return;
     }
 
-    const labels = columnsWithOversizedMashupText(table, (col) => {
-      if (col.type === "text") return true;
-      if (!typesConfigVisible()) return false;
-      const cfg = typeConfig.get(col.id);
-      return cfg?.outputType === "text";
-    });
-
-    if (labels.length === 0) {
-      clearMashupTextWarning();
-      return;
-    }
-
-    const list =
-      labels.length === 1
-        ? `"${labels[0]}"`
-        : labels.map((label) => `"${label}"`).join(", ");
-    const subject =
-      labels.length === 1
-        ? `Text in column ${list} exceeds`
-        : `Text in columns ${list} exceeds`;
-    if (warningBody) {
-      warningBody.textContent = `${subject} ${MASHUP_TEXT_CHAR_LIMIT.toLocaleString("en-GB")} characters and will be truncated by the Mashup Engine when loaded into the model.`;
-    }
+    if (warningBody) warningBody.textContent = parts.join(" ");
     if (warningBanner) showBanner(warningBanner);
   }
 
@@ -1056,7 +1064,7 @@ export function initConverterApp({ root = document } = {}) {
       } else if (source === "dax" || source === "m") {
         const text = inputCode?.getSource() ?? "";
         if (text.trim()) {
-          model = normalizeTable(await parse(source, text));
+          model = await parse(source, text);
         } else {
           model = createEmptyTable({ columnCount: 6, rowCount: 2 });
           typeConfig.clear();
@@ -1158,7 +1166,7 @@ export function initConverterApp({ root = document } = {}) {
           typeConfig.clear();
           throw new ConvertError(`${source.toUpperCase()} input is empty`);
         }
-        model = normalizeTable(await parse(source, text));
+        model = await parse(source, text);
       }
 
       if (gen !== convertGen) return;
@@ -1178,14 +1186,14 @@ export function initConverterApp({ root = document } = {}) {
       }
       syncing = false;
       clearError();
-      updateMashupTextWarning(model);
+      updateInputWarnings(model);
       updateOutputTabularCopyEnabled();
       if (source === "tabular") renderConfigUi();
     } catch (err) {
       syncing = false;
       if (gen !== convertGen) return;
       showError(err instanceof Error ? err.message : String(err));
-      clearMashupTextWarning();
+      clearInputWarnings();
       updateOutputTabularCopyEnabled();
     }
   }

@@ -12,6 +12,11 @@ import {
 } from "./model.js";
 import { coerceCellValue } from "../components/tabular-input.js";
 import { createScanner, stripDaxWrappers } from "./scan.js";
+import {
+  attachParseWarnings,
+  warningsForNamedRows,
+  warningsForValueRows,
+} from "./parse-warnings.js";
 
 /**
  * @param {string} text
@@ -25,18 +30,25 @@ export function parseDax(text) {
 
   const lower = stripped.toLowerCase();
   if (/\bdatatable\s*\(/.test(lower)) {
-    return normalizeTable(parseDatatable(stripped));
+    return finishParse(parseDatatable(stripped));
   }
   if (/\bunion\s*\(/.test(lower) || /^\s*row\s*\(/i.test(stripped) || /\bfilter\s*\(\s*row\s*\(/i.test(lower)) {
-    return normalizeTable(parseUnionRow(stripped));
+    return finishParse(parseUnionRow(stripped));
   }
   if (/\bselectcolumns\s*\(/.test(lower) || /^\s*\{/.test(stripped)) {
-    return normalizeTable(parseConstructor(stripped));
+    return finishParse(parseConstructor(stripped));
   }
 
   throw new ConvertError(
     "Unrecognized DAX table form. Expected DATATABLE(...), {...} / SELECTCOLUMNS(...), or UNION(ROW(...)) / ROW(...)."
   );
+}
+
+/**
+ * @param {{ table: import("./model.js").TableModel, warnings: string[] }} result
+ */
+function finishParse(result) {
+  return attachParseWarnings(normalizeTable(result.table), result.warnings);
 }
 
 /**
@@ -97,7 +109,11 @@ function parseDatatable(text) {
   const close = sc.peekToken();
   if (close.type === "punct" && close.value === ")") sc.next();
 
-  return buildModel(colDefs, dataRows);
+  const jsRows = dataRows.map((row) => row.map(literalToJs));
+  return {
+    table: buildModel(colDefs, dataRows),
+    warnings: warningsForValueRows(jsRows, colDefs.length),
+  };
 }
 
 /**
@@ -155,7 +171,11 @@ function parseConstructor(text) {
       type: inferDaxTypeFromValues(rows.map((r) => r[index])),
     }));
 
-    return buildModel(defs, rows);
+    const jsRows = rows.map((row) => row.map(literalToJs));
+    return {
+      table: buildModel(defs, rows),
+      warnings: warningsForValueRows(jsRows, labels.length),
+    };
   }
 
   // bare { ( ... ), ( ... ) }
@@ -175,7 +195,11 @@ function parseConstructor(text) {
     label: `Value${i + 1}`,
     type: inferDaxTypeFromValues(rows.map((r) => r[i])),
   }));
-  return buildModel(defs, rows);
+  const jsRows = rows.map((row) => row.map(literalToJs));
+  return {
+    table: buildModel(defs, rows),
+    warnings: warningsForValueRows(jsRows, colCount),
+  };
 }
 
 /**
@@ -225,14 +249,18 @@ function parseUnionRow(text) {
     const rowModel = parseRowCall(sc);
     // skip rest
     return {
-      columns: rowModel.columns,
-      rows: [],
+      table: {
+        columns: rowModel.columns,
+        rows: [],
+      },
+      warnings: [],
+      namedRows: [],
     };
   }
 
   if (/^\s*ROW\s*\(/i.test(sc.source.slice(sc.position()))) {
     const one = parseRowCall(sc);
-    return one;
+    return { table: one, warnings: [], namedRows: [rowModelToNamed(one)] };
   }
 
   sc.expectIdent("UNION");
@@ -240,6 +268,8 @@ function parseUnionRow(text) {
 
   /** @type {import("./model.js").TableModel | null} */
   let merged = null;
+  /** @type {{ names: string[], values: unknown[] }[]} */
+  const namedRows = [];
 
   while (true) {
     const peek = sc.peekToken();
@@ -255,6 +285,7 @@ function parseUnionRow(text) {
 
     if (peek.type === "ident" && peek.value.toLowerCase() === "row") {
       const part = parseRowCall(sc);
+      namedRows.push(rowModelToNamed(part));
       merged = mergeRowTables(merged, part);
       continue;
     }
@@ -263,7 +294,8 @@ function parseUnionRow(text) {
     if (peek.type === "ident" && peek.value.toLowerCase() === "union") {
       const nestedText = readCallExpression(sc);
       const part = parseUnionRow(nestedText);
-      merged = mergeRowTables(merged, part);
+      namedRows.push(...part.namedRows);
+      merged = mergeRowTables(merged, part.table);
       continue;
     }
 
@@ -273,7 +305,22 @@ function parseUnionRow(text) {
   if (!merged) {
     throw new ConvertError("UNION has no ROW arguments");
   }
-  return merged;
+  return {
+    table: merged,
+    warnings: warningsForNamedRows(namedRows),
+    namedRows,
+  };
+}
+
+/**
+ * @param {import("./model.js").TableModel} table
+ */
+function rowModelToNamed(table) {
+  const row = table.rows[0];
+  return {
+    names: table.columns.map((col) => col.label),
+    values: table.columns.map((col) => row?.cells[col.id] ?? null),
+  };
 }
 
 /**

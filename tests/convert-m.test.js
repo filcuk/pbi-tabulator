@@ -10,6 +10,11 @@ import { generateM } from "../app/convert/m-generate.js";
 import { parseM } from "../app/convert/m-parse.js";
 import { encodeJsonDeflateBase64, decodeJsonDeflateBase64 } from "../app/convert/binary.js";
 import { generate, parse } from "../app/convert/index.js";
+import {
+  getParseWarnings,
+  WARN_COLUMN_SHAPE,
+  WARN_COLUMN_TYPES,
+} from "../app/convert/parse-warnings.js";
 
 const sample = normalizeTable({
   columns: [
@@ -98,4 +103,26 @@ test("facade parse/generate for dax and m", async () => {
   const m = await generate("m", "table", sample);
   const fromM = await parse("m", m);
   assert.equal(tablesEqualByContent(sample, fromM), true);
+});
+
+test("parseM warns on jagged #table rows and mixed column types", async () => {
+  const jagged = await parseM(
+    `#table(type table [A = number, B = text], {{1, "a"}, {2}})`
+  );
+  assert.ok(getParseWarnings(jagged).includes(WARN_COLUMN_SHAPE));
+
+  const mixed = await parseM(
+    `#table(type table [A = any], {{1}, {"x"}})`
+  );
+  assert.ok(getParseWarnings(mixed).includes(WARN_COLUMN_TYPES));
+});
+
+test("parseM warns on FromRecords name and type mismatches", async () => {
+  const names = await parseM(
+    `Table.FromRecords({[A = 1, B = 2], [A = 3, C = 4]})`
+  );
+  assert.ok(getParseWarnings(names).includes(WARN_COLUMN_SHAPE));
+
+  const types = await parseM(`Table.FromRecords({[A = 1], [A = "x"]})`);
+  assert.ok(getParseWarnings(types).includes(WARN_COLUMN_TYPES));
 });

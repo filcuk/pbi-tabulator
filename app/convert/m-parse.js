@@ -13,6 +13,11 @@ import {
 import { coerceCellValue } from "../components/tabular-input.js";
 import { createScanner } from "./scan.js";
 import { decodeJsonDeflateBase64 } from "./binary.js";
+import {
+  attachParseWarnings,
+  warningsForNamedRows,
+  warningsForValueRows,
+} from "./parse-warnings.js";
 
 /**
  * @param {string} text
@@ -25,18 +30,25 @@ export async function parseM(text) {
   const lower = src.toLowerCase();
 
   if (lower.includes("binary.fromtext")) {
-    return normalizeTable(await parseBinaryFromText(src));
+    return finishParse(await parseBinaryFromText(src));
   }
   if (/table\.fromrecords\s*\(/i.test(src)) {
-    return normalizeTable(parseFromRecords(src));
+    return finishParse(parseFromRecords(src));
   }
   if (/#table\s*\(/.test(lower) || /#\s*table\s*\(/.test(lower)) {
-    return normalizeTable(parseHashTable(src));
+    return finishParse(parseHashTable(src));
   }
 
   throw new ConvertError(
     "Unrecognized M table form. Expected #table(...), Table.FromRecords(...), or Binary.FromText(...)."
   );
+}
+
+/**
+ * @param {{ table: import("./model.js").TableModel, warnings: string[] }} result
+ */
+function finishParse(result) {
+  return attachParseWarnings(normalizeTable(result.table), result.warnings);
 }
 
 /**
@@ -68,7 +80,14 @@ function parseHashTable(text) {
     return { id: nextId("row"), cells };
   });
 
-  return { columns, rows };
+  const jsRows = rowsLit.map((row) =>
+    Array.isArray(row) ? row.map(mLiteralToJs) : []
+  );
+
+  return {
+    table: { columns, rows },
+    warnings: warningsForValueRows(jsRows, columns.length),
+  };
 }
 
 /**
@@ -97,6 +116,8 @@ function parseFromRecords(text) {
 
   /** @type {Record<string, unknown>[]} */
   const recordRows = [];
+  /** @type {{ names: string[], values: unknown[] }[]} */
+  const namedRows = [];
 
   for (const item of list) {
     if (!item || typeof item !== "object" || Array.isArray(item) || !("fields" in item)) {
@@ -105,13 +126,20 @@ function parseFromRecords(text) {
     const fields = /** @type {{ fields: { name: string, value: unknown }[] }} */ (item).fields;
     /** @type {Record<string, unknown>} */
     const rowObj = {};
+    /** @type {string[]} */
+    const names = [];
+    /** @type {unknown[]} */
+    const values = [];
     for (const field of fields) {
       if (!colTypes.has(field.name)) {
         colOrder.push(field.name);
         colTypes.set(field.name, inferMType(field.value));
       }
       rowObj[field.name] = field.value;
+      names.push(field.name);
+      values.push(mLiteralToJs(field.value));
     }
+    namedRows.push({ names, values });
     recordRows.push(rowObj);
   }
 
@@ -130,7 +158,10 @@ function parseFromRecords(text) {
     return { id: nextId("row"), cells };
   });
 
-  return { columns, rows };
+  return {
+    table: { columns, rows },
+    warnings: warningsForNamedRows(namedRows),
+  };
 }
 
 /**
@@ -190,7 +221,10 @@ async function parseBinaryFromText(text) {
     return { id: nextId("row"), cells };
   });
 
-  return { columns, rows };
+  return {
+    table: { columns, rows },
+    warnings: warningsForValueRows(dataRows, columns.length),
+  };
 }
 
 /**
