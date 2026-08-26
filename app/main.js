@@ -11,7 +11,7 @@ initShell({ headingLinks: false });
 // Framework still always injects #page-nav; omit it for this app.
 initPageNavPanel("#page-nav")?.destroy();
 document.getElementById("page-nav")?.remove();
-initConverterApp();
+const converter = initConverterApp();
 
 const aboutOpenBtn = document.getElementById("about-open-btn");
 
@@ -82,10 +82,11 @@ const tour = initTutorial({
   ],
 });
 
-document.getElementById("start-tour-btn")?.addEventListener("click", (event) => {
+document.getElementById("start-tour-btn")?.addEventListener("click", async (event) => {
   event.preventDefault();
   dismissTourHint();
   aboutDialog?.closeDialog();
+  await converter?.prepareGuidedTour();
   tour?.start();
 });
 

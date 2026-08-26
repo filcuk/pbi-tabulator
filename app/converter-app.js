@@ -468,14 +468,17 @@ export function initConverterApp({ root = document } = {}) {
     },
   });
 
-  initSegmentedControl(root.querySelector("#dax-dialect-control"), {
-    defaultValue: "datatable",
-    onChange({ value, source: changeSource }) {
-      if (changeSource === "init") return;
-      daxDialect = value;
-      void runConvert();
-    },
-  });
+  const daxDialectControl = initSegmentedControl(
+    root.querySelector("#dax-dialect-control"),
+    {
+      defaultValue: "datatable",
+      onChange({ value, source: changeSource }) {
+        if (changeSource === "init") return;
+        daxDialect = value;
+        void runConvert();
+      },
+    }
+  );
 
   initSegmentedControl(root.querySelector("#m-dialect-control"), {
     defaultValue: "table",
@@ -969,8 +972,29 @@ export function initConverterApp({ root = document } = {}) {
   renderConfigUi();
   void runConvert();
 
+  /**
+   * Reset conversion selection for the guided tour: tabular → DAX DATATABLE.
+   */
+  async function prepareGuidedTour() {
+    if (source !== "tabular") {
+      await onSourceChange("tabular");
+      sourceControl?.selectValue("tabular", { emit: false });
+    }
+    if (target !== "dax") {
+      await onTargetChange("dax");
+      targetControl?.selectValue("dax", { emit: false });
+    }
+    if (daxDialect !== "datatable") {
+      daxDialect = "datatable";
+      daxDialectControl?.selectValue("datatable", { emit: false });
+      updateDialectVisibility();
+      await runConvert();
+    }
+  }
+
   return {
     getModel: () => model,
     refresh: () => runConvert(),
+    prepareGuidedTour,
   };
 }
