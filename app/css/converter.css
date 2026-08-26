@@ -58,10 +58,6 @@
   margin-bottom: 0.5rem;
 }
 
-.converter-pane-actions .btn {
-  gap: 0.375rem;
-}
-
 .converter-output-code-extras {
   display: flex;
   flex-wrap: wrap;

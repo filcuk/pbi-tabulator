@@ -3,6 +3,7 @@
  */
 
 import { setHidden } from "./utils/dom.js";
+import { createIcon } from "./utils/icons.js";
 import {
   flashButtonLabel,
   prepareButtonLabelFlash,
@@ -550,6 +551,9 @@ export function initConverterApp({ root = document } = {}) {
 
   const outputTabularCopyBtn = root.querySelector("#output-tabular-copy");
   if (outputTabularCopyBtn instanceof HTMLButtonElement) {
+    outputTabularCopyBtn.prepend(
+      createIcon("copy", { className: "btn-icon-svg" })
+    );
     prepareButtonLabelFlash(outputTabularCopyBtn, { idle: "Copy" });
   }
 
