@@ -3,6 +3,11 @@
  */
 
 import { setHidden } from "./utils/dom.js";
+import {
+  flashButtonLabel,
+  prepareButtonLabelFlash,
+  setButtonLabelFlash,
+} from "./utils/button-label.js";
 import { initSegmentedControl } from "./components/segmented-control.js";
 import { initDropdown } from "./components/dropdown.js";
 import {
@@ -71,29 +76,6 @@ async function copyTextToClipboard(text) {
   }
   textarea.remove();
   return ok;
-}
-
-/**
- * Flash a temporary label on a pane action button.
- * @param {HTMLButtonElement | null} button
- * @param {string} text
- * @param {string} restore
- * @param {{ current: ReturnType<typeof setTimeout> | null }} timerRef
- */
-function flashActionLabel(button, text, restore, timerRef) {
-  if (!button) return;
-  const labelEl = button.querySelector(".converter-pane-action-label");
-  if (timerRef.current !== null) {
-    clearTimeout(timerRef.current);
-    timerRef.current = null;
-  }
-  if (labelEl) labelEl.textContent = text;
-  else button.textContent = text;
-  timerRef.current = setTimeout(() => {
-    timerRef.current = null;
-    if (labelEl) labelEl.textContent = restore;
-    else button.textContent = restore;
-  }, 1500);
 }
 
 /**
@@ -407,9 +389,9 @@ export function initConverterApp({ root = document } = {}) {
   );
 
   const outputTabularCopyBtn = root.querySelector("#output-tabular-copy");
-
-  /** @type {{ current: ReturnType<typeof setTimeout> | null }} */
-  const outputTabularCopyFlash = { current: null };
+  if (outputTabularCopyBtn instanceof HTMLButtonElement) {
+    prepareButtonLabelFlash(outputTabularCopyBtn, { idle: "Copy" });
+  }
 
   /** @type {MutationObserver | null} */
   let inputPasteSourceObserver = null;
@@ -459,14 +441,15 @@ export function initConverterApp({ root = document } = {}) {
   });
 
   outputTabularCopyBtn?.addEventListener("click", async () => {
+    if (!(outputTabularCopyBtn instanceof HTMLButtonElement)) return;
     const text = formatClipboardTable(model.columns, model.rows);
     const ok = await copyTextToClipboard(text);
-    flashActionLabel(
-      outputTabularCopyBtn,
-      ok ? "Copied" : "Failed",
-      "Copy",
-      outputTabularCopyFlash
-    );
+    flashButtonLabel(outputTabularCopyBtn, ok, {
+      reset: () => {
+        setButtonLabelFlash(outputTabularCopyBtn, "Copy");
+        outputTabularCopyBtn.setAttribute("aria-label", "Copy table");
+      },
+    });
   });
 
   const sourceControl = initSegmentedControl(root.querySelector("#source-control"), {

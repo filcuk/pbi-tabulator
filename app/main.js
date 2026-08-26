@@ -4,15 +4,10 @@ import { initAboutDialog } from "./components/about-dialog.js";
 import { initTutorial } from "./components/tutorial.js";
 import { initConverterApp } from "./converter-app.js";
 
-initShell();
-// 0.12.1 always injects #page-nav and heading copy-link buttons.
+initShell({ headingLinks: false });
+// Framework still always injects #page-nav; omit it for this app.
 initPageNavPanel("#page-nav")?.destroy();
 document.getElementById("page-nav")?.remove();
-for (const btn of document.querySelectorAll(".heading-link-btn")) btn.remove();
-for (const heading of document.querySelectorAll(".heading-anchor")) {
-  heading.classList.remove("heading-anchor");
-  delete heading.dataset.headingLink;
-}
 initConverterApp();
 
 initAboutDialog({
@@ -43,11 +38,11 @@ initTutorial({
       position: "bottom",
     },
     {
-      target: () => {
+      when: () => {
         const el = document.getElementById("config-section");
-        if (!(el instanceof HTMLElement) || el.hidden) return null;
-        return el;
+        return el instanceof HTMLElement && !el.hidden;
       },
+      target: "#config-section",
       title: "Column types",
       body: "Optionally set the column types, which reflects in the output column definition. Tabulator will attempt to define the types automatically.",
       position: "bottom",
