@@ -79,6 +79,14 @@ const tour = initTutorial({
       body: "Optionally set the column types, which reflects in the output column definition. Tabulator will attempt to define the types automatically.",
       position: "bottom",
     },
+    {
+      target: "#load-example-btn",
+      interactive: true,
+      advanceOn: "click",
+      title: "Try it out",
+      body: "Press this button now to load sample data!",
+      position: "bottom",
+    },
   ],
 });
 

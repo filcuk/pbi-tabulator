@@ -11,6 +11,7 @@ import {
 import { initSegmentedControl } from "./components/segmented-control.js";
 import { initDropdown } from "./components/dropdown.js";
 import {
+  defaultValueForType,
   formatClipboardTable,
   initTabularInput,
 } from "./components/tabular-input.js";
@@ -18,9 +19,12 @@ import { initTable } from "./components/table.js";
 import { initCodeBlock } from "./components/code-block.js";
 import { initExpandableSurface } from "./components/expandable-surface.js";
 import { initToggle } from "./components/toggle.js";
+import { initDialog } from "./components/dialog.js";
 import { showBanner, hideBanner } from "./components/banner.js";
 import {
   ConvertError,
+  cloneTable,
+  createEmptyTable,
   generate,
   normalizeTable,
   parse,
@@ -309,7 +313,7 @@ export function initConverterApp({ root = document } = {}) {
   const configColumnsEl = root.querySelector("#config-columns");
 
   /** @type {import("./convert/model.js").TableModel} */
-  let model = SAMPLE;
+  let model = createEmptyTable({ columnCount: 6, rowCount: 2 });
 
   let source = "tabular";
   let target = "dax";
@@ -963,14 +967,88 @@ export function initConverterApp({ root = document } = {}) {
   }
 
   syncTypeConfigFromModel();
-  // CURRENCY is not auto-detected; lock Amount in the starter sample for DAX.
-  if (configLang() === "dax" && typeConfig.has("amount")) {
-    typeConfig.set("amount", { outputType: "CURRENCY", locked: true });
-  }
   updateDialectVisibility();
   updatePaneVisibility();
   renderConfigUi();
   void runConvert();
+
+  /**
+   * True when every cell is still the type default (no user content).
+   * @param {import("./convert/model.js").TableModel} table
+   */
+  function isTableCellsBlank(table) {
+    const normalized = normalizeTable(table);
+    if (normalized.columns.length === 0) return true;
+    return normalized.rows.every((row) =>
+      normalized.columns.every((col) => {
+        const value = row.cells[col.id];
+        return value === defaultValueForType(col.type);
+      })
+    );
+  }
+
+  /**
+   * True when the current source input has no user content to overwrite.
+   */
+  function isInputBlank() {
+    if (source === "tabular") {
+      return isTableCellsBlank(inputTabular?.getData() ?? model);
+    }
+    return !(inputCode?.getSource() ?? "").trim();
+  }
+
+  function applySampleTypeLocks() {
+    // CURRENCY is not auto-detected; lock Amount in the sample for DAX.
+    if (configLang() === "dax" && typeConfig.has("amount")) {
+      typeConfig.set("amount", { outputType: "CURRENCY", locked: true });
+    }
+  }
+
+  /**
+   * Load the built-in sample table into the current input.
+   */
+  async function loadExample() {
+    model = cloneTable(SAMPLE);
+    syncTypeConfigFromModel();
+    applySampleTypeLocks();
+    renderConfigUi();
+
+    syncing = true;
+    try {
+      if (source === "tabular") {
+        inputTabular?.setData(model, { emitEvent: false });
+      } else {
+        const dialect = source === "dax" ? daxDialect : mDialect;
+        const code = await generate(source, dialect, model, generateOptions());
+        inputCode?.setSource(String(await code));
+      }
+    } catch (err) {
+      showError(err instanceof Error ? err.message : String(err));
+    } finally {
+      syncing = false;
+    }
+
+    await runConvert();
+  }
+
+  const loadExampleConfirmDialog = initDialog({
+    dialogEl: root.querySelector("#load-example-confirm-dialog"),
+  });
+
+  root.querySelector("#load-example-btn")?.addEventListener("click", () => {
+    if (isInputBlank()) {
+      void loadExample();
+      return;
+    }
+    loadExampleConfirmDialog?.openDialog();
+  });
+
+  root
+    .querySelector("#load-example-confirm-dialog-ok")
+    ?.addEventListener("click", () => {
+      loadExampleConfirmDialog?.closeDialog();
+      void loadExample();
+    });
 
   /**
    * Reset conversion selection for the guided tour: tabular → DAX DATATABLE.
@@ -996,5 +1074,6 @@ export function initConverterApp({ root = document } = {}) {
     getModel: () => model,
     refresh: () => runConvert(),
     prepareGuidedTour,
+    loadExample,
   };
 }
