@@ -27,16 +27,6 @@
     </header>
 
     <main id="main">
-      <div
-        id="convert-error"
-        class="banner banner-error hidden"
-        role="alert"
-        hidden
-      >
-        <span class="banner-icon" data-icon="error" data-icon-class="banner-icon-svg"></span>
-        <span class="banner-body" id="convert-error-body">Conversion error</span>
-      </div>
-
       <section class="converter" aria-label="Table converter">
         <section class="converter-pane" aria-labelledby="conversion-heading">
           <h2 id="conversion-heading">Conversion</h2>
@@ -126,6 +116,15 @@
         <div class="converter-panes">
           <section class="converter-pane" aria-labelledby="input-heading">
             <h2 id="input-heading">Input</h2>
+            <div
+              id="convert-error"
+              class="banner banner-error hidden"
+              role="alert"
+              hidden
+            >
+              <span class="banner-icon" data-icon="error" data-icon-class="banner-icon-svg"></span>
+              <span class="banner-body" id="convert-error-body">Conversion error</span>
+            </div>
             <div
               id="convert-warning"
               class="banner banner-warning hidden"

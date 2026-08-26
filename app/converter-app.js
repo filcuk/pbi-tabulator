@@ -583,6 +583,8 @@ export function initConverterApp({ root = document } = {}) {
     const action = btn.dataset.codeToolbarAction;
     if (action === "clear") {
       stopWatchingInputPaste();
+      model = createEmptyTable({ columnCount: 6, rowCount: 2 });
+      typeConfig.clear();
       scheduleConvert();
       return;
     }
@@ -606,6 +608,7 @@ export function initConverterApp({ root = document } = {}) {
 
   outputTabularCopyBtn?.addEventListener("click", async () => {
     if (!(outputTabularCopyBtn instanceof HTMLButtonElement)) return;
+    if (outputTabularCopyBtn.disabled) return;
     const text = formatClipboardTable(model.columns, model.rows);
     const ok = await copyTextToClipboard(text);
     flashButtonLabel(outputTabularCopyBtn, ok, {
@@ -1045,6 +1048,8 @@ export function initConverterApp({ root = document } = {}) {
   async function onSourceChange(next) {
     if (next === source) return;
 
+    /** Cleared code must not resurrect the previous table when switching. */
+    let leaveInputEmpty = false;
     try {
       if (source === "tabular") {
         model = normalizeTable(inputTabular?.getData() ?? model);
@@ -1052,6 +1057,10 @@ export function initConverterApp({ root = document } = {}) {
         const text = inputCode?.getSource() ?? "";
         if (text.trim()) {
           model = normalizeTable(await parse(source, text));
+        } else {
+          model = createEmptyTable({ columnCount: 6, rowCount: 2 });
+          typeConfig.clear();
+          leaveInputEmpty = true;
         }
       }
     } catch {
@@ -1076,6 +1085,8 @@ export function initConverterApp({ root = document } = {}) {
     try {
       if (source === "tabular") {
         inputTabular?.setData(model, { emitEvent: false });
+      } else if (leaveInputEmpty) {
+        inputCode?.setSource("");
       } else {
         const dialect = source === "dax" ? daxDialect : mDialect;
         const code = await generate(source, dialect, model, generateOptions());
@@ -1143,6 +1154,8 @@ export function initConverterApp({ root = document } = {}) {
       } else if (source === "dax" || source === "m") {
         const text = inputCode?.getSource() ?? "";
         if (!text.trim()) {
+          model = createEmptyTable({ columnCount: 6, rowCount: 2 });
+          typeConfig.clear();
           throw new ConvertError(`${source.toUpperCase()} input is empty`);
         }
         model = normalizeTable(await parse(source, text));
@@ -1166,12 +1179,14 @@ export function initConverterApp({ root = document } = {}) {
       syncing = false;
       clearError();
       updateMashupTextWarning(model);
+      updateOutputTabularCopyEnabled();
       if (source === "tabular") renderConfigUi();
     } catch (err) {
       syncing = false;
       if (gen !== convertGen) return;
       showError(err instanceof Error ? err.message : String(err));
       clearMashupTextWarning();
+      updateOutputTabularCopyEnabled();
     }
   }
 
@@ -1188,6 +1203,7 @@ export function initConverterApp({ root = document } = {}) {
   updateDialectVisibility();
   updatePaneVisibility();
   renderConfigUi();
+  updateOutputTabularCopyEnabled();
   void runConvert();
   schedulePersist();
 
@@ -1219,6 +1235,11 @@ export function initConverterApp({ root = document } = {}) {
       return isTableCellsBlank(inputTabular?.getData() ?? model);
     }
     return !(inputCode?.getSource() ?? "").trim();
+  }
+
+  function updateOutputTabularCopyEnabled() {
+    if (!(outputTabularCopyBtn instanceof HTMLButtonElement)) return;
+    outputTabularCopyBtn.disabled = isInputBlank();
   }
 
   function applySampleTypeLocks() {
