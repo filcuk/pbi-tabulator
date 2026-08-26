@@ -42,6 +42,29 @@ const DEBOUNCE_MS = 280;
 const STATE_STORAGE_KEY = "pbi-tabulator-converter-state";
 const STATE_VERSION = 1;
 const LANGS = new Set(["tabular", "dax", "m"]);
+/** Mashup Engine truncates text cells above this length when loading into the model. */
+const MASHUP_TEXT_CHAR_LIMIT = 32766;
+
+/**
+ * Labels of text columns that contain a cell longer than the Mashup load limit.
+ * @param {import("./convert/model.js").TableModel} table
+ * @param {(col: import("./convert/model.js").Column) => boolean} isTextColumn
+ * @returns {string[]}
+ */
+function columnsWithOversizedMashupText(table, isTextColumn) {
+  /** @type {string[]} */
+  const labels = [];
+  for (const col of table.columns) {
+    if (!isTextColumn(col)) continue;
+    const oversize = table.rows.some((row) => {
+      const value = row.cells[col.id];
+      if (value === null || value === undefined) return false;
+      return String(value).length > MASHUP_TEXT_CHAR_LIMIT;
+    });
+    if (oversize) labels.push(col.label || col.id);
+  }
+  return labels;
+}
 
 /**
  * @param {unknown} value
@@ -384,6 +407,8 @@ function renderOutputTable(blockEl, table, previous) {
 export function initConverterApp({ root = document } = {}) {
   const errorBanner = root.querySelector("#convert-error");
   const errorBody = root.querySelector("#convert-error-body");
+  const warningBanner = root.querySelector("#convert-warning");
+  const warningBody = root.querySelector("#convert-warning-body");
   const daxDialectField = root.querySelector("#dax-dialect-field");
   const mDialectField = root.querySelector("#m-dialect-field");
   const inputTabularWrap = root.querySelector("#input-tabular-wrap");
@@ -677,6 +702,46 @@ export function initConverterApp({ root = document } = {}) {
   function showError(message) {
     if (errorBody) errorBody.textContent = message;
     if (errorBanner) showBanner(errorBanner);
+  }
+
+  function clearMashupTextWarning() {
+    if (warningBanner) hideBanner(warningBanner);
+  }
+
+  /**
+   * Warn when M target text cells exceed the Mashup Engine load limit.
+   * @param {import("./convert/model.js").TableModel} table
+   */
+  function updateMashupTextWarning(table) {
+    if (target !== "m") {
+      clearMashupTextWarning();
+      return;
+    }
+
+    const labels = columnsWithOversizedMashupText(table, (col) => {
+      if (col.type === "text") return true;
+      if (!typesConfigVisible()) return false;
+      const cfg = typeConfig.get(col.id);
+      return cfg?.outputType === "text";
+    });
+
+    if (labels.length === 0) {
+      clearMashupTextWarning();
+      return;
+    }
+
+    const list =
+      labels.length === 1
+        ? `"${labels[0]}"`
+        : labels.map((label) => `"${label}"`).join(", ");
+    const subject =
+      labels.length === 1
+        ? `Text in column ${list} exceeds`
+        : `Text in columns ${list} exceeds`;
+    if (warningBody) {
+      warningBody.textContent = `${subject} ${MASHUP_TEXT_CHAR_LIMIT.toLocaleString("en-GB")} characters and will be truncated by the Mashup Engine when loaded into the model.`;
+    }
+    if (warningBanner) showBanner(warningBanner);
   }
 
   function scheduleConvert() {
@@ -1096,11 +1161,13 @@ export function initConverterApp({ root = document } = {}) {
       }
       syncing = false;
       clearError();
+      updateMashupTextWarning(model);
       if (source === "tabular") renderConfigUi();
     } catch (err) {
       syncing = false;
       if (gen !== convertGen) return;
       showError(err instanceof Error ? err.message : String(err));
+      clearMashupTextWarning();
     }
   }
 
