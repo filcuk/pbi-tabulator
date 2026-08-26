@@ -1,28 +1,55 @@
 import { initShell } from "./shell/shell.js";
 import { initPageNavPanel } from "./shell/page-nav.js";
 import { initAboutDialog } from "./components/about-dialog.js";
+import { initPopover } from "./components/popover.js";
 import { initTutorial } from "./components/tutorial.js";
 import { initConverterApp } from "./converter-app.js";
 
-initShell();
-// 0.12.1 always injects #page-nav and heading copy-link buttons.
+const TOUR_HINT_STORAGE_KEY = "pbi-tabulator-tour-hint-seen";
+
+initShell({ headingLinks: false });
+// Framework still always injects #page-nav; omit it for this app.
 initPageNavPanel("#page-nav")?.destroy();
 document.getElementById("page-nav")?.remove();
-for (const btn of document.querySelectorAll(".heading-link-btn")) btn.remove();
-for (const heading of document.querySelectorAll(".heading-anchor")) {
-  heading.classList.remove("heading-anchor");
-  delete heading.dataset.headingLink;
-}
-initConverterApp();
+const converter = initConverterApp();
 
-initAboutDialog({
+const aboutOpenBtn = document.getElementById("about-open-btn");
+
+/** @type {ReturnType<typeof initPopover> | null} */
+let tourHintPopover = null;
+
+function hasSeenTourHint() {
+  try {
+    return localStorage.getItem(TOUR_HINT_STORAGE_KEY) === "1";
+  } catch {
+    return true;
+  }
+}
+
+function markTourHintSeen() {
+  try {
+    localStorage.setItem(TOUR_HINT_STORAGE_KEY, "1");
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
+function dismissTourHint() {
+  if (!tourHintPopover) return;
+  const popover = tourHintPopover;
+  tourHintPopover = null;
+  markTourHintSeen();
+  popover.destroy();
+}
+
+const aboutDialog = initAboutDialog({
   dialogEl: document.getElementById("about-dialog"),
-  openTriggers: "#about-open-btn",
+  openTriggers: [aboutOpenBtn],
+  onOpen: () => dismissTourHint(),
 });
 
-initTutorial({
+const tour = initTutorial({
   id: "tabulator-overview",
-  startTriggers: "#start-tour-btn",
   steps: [
     {
       target: ".converter-toolbar",
@@ -43,14 +70,60 @@ initTutorial({
       position: "bottom",
     },
     {
-      target: () => {
+      when: () => {
         const el = document.getElementById("config-section");
-        if (!(el instanceof HTMLElement) || el.hidden) return null;
-        return el;
+        return el instanceof HTMLElement && !el.hidden;
       },
+      target: "#config-section",
       title: "Column types",
       body: "Optionally set the column types, which reflects in the output column definition. Tabulator will attempt to define the types automatically.",
       position: "bottom",
     },
+    {
+      target: "#load-example-btn",
+      interactive: true,
+      advanceOn: "click",
+      title: "Try it out",
+      body: "Press this button now to load sample data!",
+      position: "bottom",
+    },
   ],
 });
+
+document.getElementById("start-tour-btn")?.addEventListener("click", async (event) => {
+  event.preventDefault();
+  dismissTourHint();
+  aboutDialog?.closeDialog();
+  await converter?.prepareGuidedTour();
+  tour?.start();
+});
+
+if (aboutOpenBtn instanceof HTMLElement && !hasSeenTourHint()) {
+  tourHintPopover = initPopover({
+    anchor: aboutOpenBtn,
+    body: "Check here for more info and a guided tour!",
+    position: "right",
+    dismissible: false,
+    trapFocus: false,
+    actions: [
+      {
+        label: "Got it",
+        className: "btn btn-primary",
+        closeOnClick: false,
+        onClick: () => dismissTourHint(),
+      },
+    ],
+    onClose: () => {
+      // Escape / outside click / × — destroy after close() returns.
+      if (!tourHintPopover) return;
+      const popover = tourHintPopover;
+      tourHintPopover = null;
+      markTourHintSeen();
+      queueMicrotask(() => popover.destroy());
+    },
+  });
+  // Let shell / layout settle before measuring the anchor.
+  window.requestAnimationFrame(() => {
+    tourHintPopover?.open();
+  });
+}

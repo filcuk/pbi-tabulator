@@ -8,6 +8,11 @@ import {
 } from "../app/convert/model.js";
 import { generateDax } from "../app/convert/dax-generate.js";
 import { parseDax } from "../app/convert/dax-parse.js";
+import {
+  getParseWarnings,
+  WARN_COLUMN_SHAPE,
+  WARN_COLUMN_TYPES,
+} from "../app/convert/parse-warnings.js";
 
 const sample = normalizeTable({
   columns: [
@@ -106,4 +111,20 @@ test("empty union-row generates FILTER schema and parses to zero rows", () => {
 test("parseDax rejects empty and unknown forms", () => {
   assert.throws(() => parseDax(""), (err) => err instanceof ConvertError);
   assert.throws(() => parseDax("SUM(1)"), (err) => err instanceof ConvertError);
+});
+
+test("parseDax warns on jagged constructor rows and mixed column types", () => {
+  const jagged = parseDax(`{ (1, "a"), (2) }`);
+  assert.ok(getParseWarnings(jagged).includes(WARN_COLUMN_SHAPE));
+
+  const mixed = parseDax(`{ (1, "a"), ("x", "b") }`);
+  assert.ok(getParseWarnings(mixed).includes(WARN_COLUMN_TYPES));
+});
+
+test("parseDax warns on UNION ROW name and type mismatches", () => {
+  const names = parseDax(`UNION(ROW("A", 1, "B", 2), ROW("A", 3, "C", 4))`);
+  assert.ok(getParseWarnings(names).includes(WARN_COLUMN_SHAPE));
+
+  const types = parseDax(`UNION(ROW("A", 1), ROW("A", "x"))`);
+  assert.ok(getParseWarnings(types).includes(WARN_COLUMN_TYPES));
 });

@@ -3,9 +3,16 @@
  */
 
 import { setHidden } from "./utils/dom.js";
+import { createIcon } from "./utils/icons.js";
+import {
+  flashButtonLabel,
+  prepareButtonLabelFlash,
+  setButtonLabelFlash,
+} from "./utils/button-label.js";
 import { initSegmentedControl } from "./components/segmented-control.js";
 import { initDropdown } from "./components/dropdown.js";
 import {
+  defaultValueForType,
   formatClipboardTable,
   initTabularInput,
 } from "./components/tabular-input.js";
@@ -13,10 +20,16 @@ import { initTable } from "./components/table.js";
 import { initCodeBlock } from "./components/code-block.js";
 import { initExpandableSurface } from "./components/expandable-surface.js";
 import { initToggle } from "./components/toggle.js";
+import { initDialog } from "./components/dialog.js";
 import { showBanner, hideBanner } from "./components/banner.js";
 import {
   ConvertError,
+  DAX_DIALECTS,
+  M_DIALECTS,
+  cloneTable,
+  createEmptyTable,
   generate,
+  getParseWarnings,
   normalizeTable,
   parse,
 } from "./convert/index.js";
@@ -28,6 +41,110 @@ import {
 } from "./convert/output-types.js";
 
 const DEBOUNCE_MS = 280;
+const STATE_STORAGE_KEY = "pbi-tabulator-converter-state";
+const STATE_VERSION = 1;
+const LANGS = new Set(["tabular", "dax", "m"]);
+/** Mashup Engine truncates text cells above this length when loading into the model. */
+const MASHUP_TEXT_CHAR_LIMIT = 32766;
+
+/**
+ * Labels of text columns that contain a cell longer than the Mashup load limit.
+ * @param {import("./convert/model.js").TableModel} table
+ * @param {(col: import("./convert/model.js").Column) => boolean} isTextColumn
+ * @returns {string[]}
+ */
+function columnsWithOversizedMashupText(table, isTextColumn) {
+  /** @type {string[]} */
+  const labels = [];
+  for (const col of table.columns) {
+    if (!isTextColumn(col)) continue;
+    const oversize = table.rows.some((row) => {
+      const value = row.cells[col.id];
+      if (value === null || value === undefined) return false;
+      return String(value).length > MASHUP_TEXT_CHAR_LIMIT;
+    });
+    if (oversize) labels.push(col.label || col.id);
+  }
+  return labels;
+}
+
+/**
+ * @param {unknown} value
+ * @returns {value is import("./convert/model.js").DaxDialect}
+ */
+function isDaxDialect(value) {
+  return DAX_DIALECTS.includes(
+    /** @type {import("./convert/model.js").DaxDialect} */ (value)
+  );
+}
+
+/**
+ * @param {unknown} value
+ * @returns {value is import("./convert/model.js").MDialect}
+ */
+function isMDialect(value) {
+  return M_DIALECTS.includes(
+    /** @type {import("./convert/model.js").MDialect} */ (value)
+  );
+}
+
+/**
+ * @returns {{
+ *   source: string,
+ *   target: string,
+ *   daxDialect: string,
+ *   mDialect: string,
+ *   model: import("./convert/model.js").TableModel | null,
+ *   inputCode: string | null,
+ *   typeConfig: Array<{ id: string, outputType: string, locked: boolean }>,
+ * } | null}
+ */
+function readPersistedState() {
+  try {
+    const raw = localStorage.getItem(STATE_STORAGE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!data || data.v !== STATE_VERSION) return null;
+
+    const source = LANGS.has(data.source) ? data.source : null;
+    const target = LANGS.has(data.target) ? data.target : null;
+    if (!source || !target) return null;
+
+    let nextSource = source;
+    let nextTarget = target;
+    if (nextSource === nextTarget) {
+      nextTarget = nextSource === "tabular" ? "dax" : "tabular";
+    }
+
+    return {
+      source: nextSource,
+      target: nextTarget,
+      daxDialect: isDaxDialect(data.daxDialect) ? data.daxDialect : "datatable",
+      mDialect: isMDialect(data.mDialect) ? data.mDialect : "table",
+      model:
+        data.model && typeof data.model === "object"
+          ? normalizeTable(data.model)
+          : null,
+      inputCode: typeof data.inputCode === "string" ? data.inputCode : null,
+      typeConfig: Array.isArray(data.typeConfig)
+        ? data.typeConfig
+            .filter(
+              (entry) =>
+                entry &&
+                typeof entry.id === "string" &&
+                typeof entry.outputType === "string"
+            )
+            .map((entry) => ({
+              id: entry.id,
+              outputType: entry.outputType,
+              locked: Boolean(entry.locked),
+            }))
+        : [],
+    };
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Copy text to the clipboard (Clipboard API, with execCommand fallback).
@@ -71,29 +188,6 @@ async function copyTextToClipboard(text) {
   }
   textarea.remove();
   return ok;
-}
-
-/**
- * Flash a temporary label on a pane action button.
- * @param {HTMLButtonElement | null} button
- * @param {string} text
- * @param {string} restore
- * @param {{ current: ReturnType<typeof setTimeout> | null }} timerRef
- */
-function flashActionLabel(button, text, restore, timerRef) {
-  if (!button) return;
-  const labelEl = button.querySelector(".converter-pane-action-label");
-  if (timerRef.current !== null) {
-    clearTimeout(timerRef.current);
-    timerRef.current = null;
-  }
-  if (labelEl) labelEl.textContent = text;
-  else button.textContent = text;
-  timerRef.current = setTimeout(() => {
-    timerRef.current = null;
-    if (labelEl) labelEl.textContent = restore;
-    else button.textContent = restore;
-  }, 1500);
 }
 
 /**
@@ -315,6 +409,8 @@ function renderOutputTable(blockEl, table, previous) {
 export function initConverterApp({ root = document } = {}) {
   const errorBanner = root.querySelector("#convert-error");
   const errorBody = root.querySelector("#convert-error-body");
+  const warningBanner = root.querySelector("#convert-warning");
+  const warningBody = root.querySelector("#convert-warning-body");
   const daxDialectField = root.querySelector("#dax-dialect-field");
   const mDialectField = root.querySelector("#m-dialect-field");
   const inputTabularWrap = root.querySelector("#input-tabular-wrap");
@@ -326,13 +422,16 @@ export function initConverterApp({ root = document } = {}) {
   const configHint = root.querySelector(".converter-config-hint");
   const configColumnsEl = root.querySelector("#config-columns");
 
-  /** @type {import("./convert/model.js").TableModel} */
-  let model = SAMPLE;
+  const saved = readPersistedState();
 
-  let source = "tabular";
-  let target = "dax";
-  let daxDialect = "datatable";
-  let mDialect = "table";
+  /** @type {import("./convert/model.js").TableModel} */
+  let model =
+    saved?.model ?? createEmptyTable({ columnCount: 6, rowCount: 2 });
+
+  let source = saved?.source ?? "tabular";
+  let target = saved?.target ?? "dax";
+  let daxDialect = saved?.daxDialect ?? "datatable";
+  let mDialect = saved?.mDialect ?? "table";
   let alignCommas = false;
   let minimised = false;
   let commaFirst = false;
@@ -340,6 +439,8 @@ export function initConverterApp({ root = document } = {}) {
   let convertGen = 0;
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let debounceTimer;
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let persistTimer;
   /** @type {ReturnType<typeof initTable> | null} */
   let outputTable = null;
 
@@ -353,6 +454,40 @@ export function initConverterApp({ root = document } = {}) {
     configDropdowns = [];
   }
 
+  function persistState() {
+    try {
+      const table =
+        source === "tabular"
+          ? normalizeTable(inputTabular?.getData() ?? model)
+          : model;
+      const payload = {
+        v: STATE_VERSION,
+        source,
+        target,
+        daxDialect,
+        mDialect,
+        model: cloneTable(table),
+        inputCode:
+          source === "dax" || source === "m"
+            ? (inputCode?.getSource() ?? "")
+            : "",
+        typeConfig: [...typeConfig.entries()].map(([id, cfg]) => ({
+          id,
+          outputType: cfg.outputType,
+          locked: Boolean(cfg.locked),
+        })),
+      };
+      localStorage.setItem(STATE_STORAGE_KEY, JSON.stringify(payload));
+    } catch {
+      // QuotaExceeded / private mode — ignore.
+    }
+  }
+
+  function schedulePersist() {
+    clearTimeout(persistTimer);
+    persistTimer = setTimeout(persistState, DEBOUNCE_MS);
+  }
+
   const inputTabular = initTabularInput(root.querySelector("#input-tabular"), {
     columns: model.columns,
     rows: model.rows,
@@ -363,6 +498,7 @@ export function initConverterApp({ root = document } = {}) {
       syncTypeConfigFromModel({ remappingLang: null });
       renderConfigUi();
       scheduleConvert();
+      schedulePersist();
     },
   });
 
@@ -374,6 +510,14 @@ export function initConverterApp({ root = document } = {}) {
     surfaceActions: "none",
   });
 
+  if (
+    (source === "dax" || source === "m") &&
+    typeof saved?.inputCode === "string"
+  ) {
+    syncing = true;
+    inputCode?.setSource(saved.inputCode);
+    syncing = false;
+  }
   const outputCodeEl = root.querySelector("#output-code");
   const outputCodeExtras = root.querySelector("#output-code-extras");
 
@@ -407,9 +551,12 @@ export function initConverterApp({ root = document } = {}) {
   );
 
   const outputTabularCopyBtn = root.querySelector("#output-tabular-copy");
-
-  /** @type {{ current: ReturnType<typeof setTimeout> | null }} */
-  const outputTabularCopyFlash = { current: null };
+  if (outputTabularCopyBtn instanceof HTMLButtonElement) {
+    outputTabularCopyBtn.prepend(
+      createIcon("copy", { className: "btn-icon-svg" })
+    );
+    prepareButtonLabelFlash(outputTabularCopyBtn, { idle: "Copy" });
+  }
 
   /** @type {MutationObserver | null} */
   let inputPasteSourceObserver = null;
@@ -437,6 +584,8 @@ export function initConverterApp({ root = document } = {}) {
     const action = btn.dataset.codeToolbarAction;
     if (action === "clear") {
       stopWatchingInputPaste();
+      model = createEmptyTable({ columnCount: 6, rowCount: 2 });
+      typeConfig.clear();
       scheduleConvert();
       return;
     }
@@ -459,18 +608,20 @@ export function initConverterApp({ root = document } = {}) {
   });
 
   outputTabularCopyBtn?.addEventListener("click", async () => {
+    if (!(outputTabularCopyBtn instanceof HTMLButtonElement)) return;
+    if (outputTabularCopyBtn.disabled) return;
     const text = formatClipboardTable(model.columns, model.rows);
     const ok = await copyTextToClipboard(text);
-    flashActionLabel(
-      outputTabularCopyBtn,
-      ok ? "Copied" : "Failed",
-      "Copy",
-      outputTabularCopyFlash
-    );
+    flashButtonLabel(outputTabularCopyBtn, ok, {
+      reset: () => {
+        setButtonLabelFlash(outputTabularCopyBtn, "Copy");
+        outputTabularCopyBtn.setAttribute("aria-label", "Copy table");
+      },
+    });
   });
 
   const sourceControl = initSegmentedControl(root.querySelector("#source-control"), {
-    defaultValue: "tabular",
+    defaultValue: source,
     onChange({ value, source: changeSource }) {
       if (changeSource === "init" || syncing) return;
       void onSourceChange(value);
@@ -478,30 +629,35 @@ export function initConverterApp({ root = document } = {}) {
   });
 
   const targetControl = initSegmentedControl(root.querySelector("#target-control"), {
-    defaultValue: "dax",
+    defaultValue: target,
     onChange({ value, source: changeSource }) {
       if (changeSource === "init" || syncing) return;
       void onTargetChange(value);
     },
   });
 
-  initSegmentedControl(root.querySelector("#dax-dialect-control"), {
-    defaultValue: "datatable",
-    onChange({ value, source: changeSource }) {
-      if (changeSource === "init") return;
-      daxDialect = value;
-      void runConvert();
-    },
-  });
+  const daxDialectControl = initSegmentedControl(
+    root.querySelector("#dax-dialect-control"),
+    {
+      defaultValue: daxDialect,
+      onChange({ value, source: changeSource }) {
+        if (changeSource === "init") return;
+        daxDialect = value;
+        void runConvert();
+        schedulePersist();
+      },
+    }
+  );
 
   initSegmentedControl(root.querySelector("#m-dialect-control"), {
-    defaultValue: "table",
+    defaultValue: mDialect,
     onChange({ value, source: changeSource }) {
       if (changeSource === "init") return;
       mDialect = value;
       updatePaneVisibility();
       renderConfigUi();
       void runConvert();
+      schedulePersist();
     },
   });
 
@@ -556,11 +712,59 @@ export function initConverterApp({ root = document } = {}) {
     if (errorBanner) showBanner(errorBanner);
   }
 
+  function clearInputWarnings() {
+    if (warningBanner) hideBanner(warningBanner);
+  }
+
+  /**
+   * Input/output warnings: DAX/M shape/type consistency, Mashup text length.
+   * @param {import("./convert/model.js").TableModel} table
+   */
+  function updateInputWarnings(table) {
+    /** @type {string[]} */
+    const parts = [];
+
+    if (source === "dax" || source === "m") {
+      parts.push(...getParseWarnings(table));
+    }
+
+    if (target === "m") {
+      const labels = columnsWithOversizedMashupText(table, (col) => {
+        if (col.type === "text") return true;
+        if (!typesConfigVisible()) return false;
+        const cfg = typeConfig.get(col.id);
+        return cfg?.outputType === "text";
+      });
+      if (labels.length > 0) {
+        const list =
+          labels.length === 1
+            ? `"${labels[0]}"`
+            : labels.map((label) => `"${label}"`).join(", ");
+        const subject =
+          labels.length === 1
+            ? `Text in column ${list} exceeds`
+            : `Text in columns ${list} exceeds`;
+        parts.push(
+          `${subject} ${MASHUP_TEXT_CHAR_LIMIT.toLocaleString("en-GB")} characters and will be truncated by the Mashup Engine when loaded into the model.`
+        );
+      }
+    }
+
+    if (parts.length === 0) {
+      clearInputWarnings();
+      return;
+    }
+
+    if (warningBody) warningBody.textContent = parts.join(" ");
+    if (warningBanner) showBanner(warningBanner);
+  }
+
   function scheduleConvert() {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
       void runConvert();
     }, DEBOUNCE_MS);
+    schedulePersist();
   }
 
   /** @returns {"dax" | "m" | null} */
@@ -725,6 +929,7 @@ export function initConverterApp({ root = document } = {}) {
         typeConfig.set(col.id, { outputType: value, locked: true });
         renderConfigUi();
         void runConvert();
+        schedulePersist();
       },
     });
     if (api) configDropdowns.push(api);
@@ -799,6 +1004,7 @@ export function initConverterApp({ root = document } = {}) {
           });
           renderConfigUi();
           void runConvert();
+          schedulePersist();
         });
       }
 
@@ -850,13 +1056,19 @@ export function initConverterApp({ root = document } = {}) {
   async function onSourceChange(next) {
     if (next === source) return;
 
+    /** Cleared code must not resurrect the previous table when switching. */
+    let leaveInputEmpty = false;
     try {
       if (source === "tabular") {
         model = normalizeTable(inputTabular?.getData() ?? model);
       } else if (source === "dax" || source === "m") {
         const text = inputCode?.getSource() ?? "";
         if (text.trim()) {
-          model = normalizeTable(await parse(source, text));
+          model = await parse(source, text);
+        } else {
+          model = createEmptyTable({ columnCount: 6, rowCount: 2 });
+          typeConfig.clear();
+          leaveInputEmpty = true;
         }
       }
     } catch {
@@ -881,6 +1093,8 @@ export function initConverterApp({ root = document } = {}) {
     try {
       if (source === "tabular") {
         inputTabular?.setData(model, { emitEvent: false });
+      } else if (leaveInputEmpty) {
+        inputCode?.setSource("");
       } else {
         const dialect = source === "dax" ? daxDialect : mDialect;
         const code = await generate(source, dialect, model, generateOptions());
@@ -893,6 +1107,7 @@ export function initConverterApp({ root = document } = {}) {
     }
 
     await runConvert();
+    schedulePersist();
   }
 
   /**
@@ -934,6 +1149,7 @@ export function initConverterApp({ root = document } = {}) {
     updatePaneVisibility();
     renderConfigUi();
     await runConvert();
+    schedulePersist();
   }
 
   async function runConvert() {
@@ -946,9 +1162,11 @@ export function initConverterApp({ root = document } = {}) {
       } else if (source === "dax" || source === "m") {
         const text = inputCode?.getSource() ?? "";
         if (!text.trim()) {
+          model = createEmptyTable({ columnCount: 6, rowCount: 2 });
+          typeConfig.clear();
           throw new ConvertError(`${source.toUpperCase()} input is empty`);
         }
-        model = normalizeTable(await parse(source, text));
+        model = await parse(source, text);
       }
 
       if (gen !== convertGen) return;
@@ -968,26 +1186,149 @@ export function initConverterApp({ root = document } = {}) {
       }
       syncing = false;
       clearError();
+      updateInputWarnings(model);
+      updateOutputTabularCopyEnabled();
       if (source === "tabular") renderConfigUi();
     } catch (err) {
       syncing = false;
       if (gen !== convertGen) return;
       showError(err instanceof Error ? err.message : String(err));
+      clearInputWarnings();
+      updateOutputTabularCopyEnabled();
+    }
+  }
+
+  if (saved?.typeConfig?.length) {
+    for (const entry of saved.typeConfig) {
+      typeConfig.set(entry.id, {
+        outputType: entry.outputType,
+        locked: entry.locked,
+      });
     }
   }
 
   syncTypeConfigFromModel();
-  // CURRENCY is not auto-detected; lock Amount in the starter sample for DAX.
-  if (configLang() === "dax" && typeConfig.has("amount")) {
-    typeConfig.set("amount", { outputType: "CURRENCY", locked: true });
-  }
   updateDialectVisibility();
   updatePaneVisibility();
   renderConfigUi();
+  updateOutputTabularCopyEnabled();
   void runConvert();
+  schedulePersist();
+
+  window.addEventListener("pagehide", () => {
+    clearTimeout(persistTimer);
+    persistState();
+  });
+
+  /**
+   * True when every cell is still the type default (no user content).
+   * @param {import("./convert/model.js").TableModel} table
+   */
+  function isTableCellsBlank(table) {
+    const normalized = normalizeTable(table);
+    if (normalized.columns.length === 0) return true;
+    return normalized.rows.every((row) =>
+      normalized.columns.every((col) => {
+        const value = row.cells[col.id];
+        return value === defaultValueForType(col.type);
+      })
+    );
+  }
+
+  /**
+   * True when the current source input has no user content to overwrite.
+   */
+  function isInputBlank() {
+    if (source === "tabular") {
+      return isTableCellsBlank(inputTabular?.getData() ?? model);
+    }
+    return !(inputCode?.getSource() ?? "").trim();
+  }
+
+  function updateOutputTabularCopyEnabled() {
+    if (!(outputTabularCopyBtn instanceof HTMLButtonElement)) return;
+    outputTabularCopyBtn.disabled = isInputBlank();
+  }
+
+  function applySampleTypeLocks() {
+    // CURRENCY is not auto-detected; lock Amount in the sample for DAX.
+    if (configLang() === "dax" && typeConfig.has("amount")) {
+      typeConfig.set("amount", { outputType: "CURRENCY", locked: true });
+    }
+  }
+
+  /**
+   * Load the built-in sample table into the current input.
+   */
+  async function loadExample() {
+    model = cloneTable(SAMPLE);
+    syncTypeConfigFromModel();
+    applySampleTypeLocks();
+    renderConfigUi();
+
+    syncing = true;
+    try {
+      if (source === "tabular") {
+        inputTabular?.setData(model, { emitEvent: false });
+      } else {
+        const dialect = source === "dax" ? daxDialect : mDialect;
+        const code = await generate(source, dialect, model, generateOptions());
+        inputCode?.setSource(String(await code));
+      }
+    } catch (err) {
+      showError(err instanceof Error ? err.message : String(err));
+    } finally {
+      syncing = false;
+    }
+
+    await runConvert();
+    schedulePersist();
+  }
+
+  const loadExampleConfirmDialog = initDialog({
+    dialogEl: root.querySelector("#load-example-confirm-dialog"),
+  });
+
+  root.querySelector("#load-example-btn")?.addEventListener("click", () => {
+    if (isInputBlank()) {
+      void loadExample();
+      return;
+    }
+    loadExampleConfirmDialog?.openDialog();
+  });
+
+  root
+    .querySelector("#load-example-confirm-dialog-ok")
+    ?.addEventListener("click", () => {
+      loadExampleConfirmDialog?.closeDialog();
+      void loadExample();
+    });
+
+  /**
+   * Reset conversion selection for the guided tour: tabular → DAX DATATABLE.
+   */
+  async function prepareGuidedTour() {
+    if (source !== "tabular") {
+      await onSourceChange("tabular");
+      sourceControl?.selectValue("tabular", { emit: false });
+    }
+    if (target !== "dax") {
+      await onTargetChange("dax");
+      targetControl?.selectValue("dax", { emit: false });
+    }
+    if (daxDialect !== "datatable") {
+      daxDialect = "datatable";
+      daxDialectControl?.selectValue("datatable", { emit: false });
+      updateDialectVisibility();
+      await runConvert();
+      schedulePersist();
+    }
+  }
 
   return {
     getModel: () => model,
     refresh: () => runConvert(),
+    prepareGuidedTour,
+    loadExample,
   };
 }

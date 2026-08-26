@@ -27,16 +27,6 @@
     </header>
 
     <main id="main">
-      <div
-        id="convert-error"
-        class="banner banner-error hidden"
-        role="alert"
-        hidden
-      >
-        <span class="banner-icon" data-icon="error" data-icon-class="banner-icon-svg"></span>
-        <span class="banner-body" id="convert-error-body">Conversion error</span>
-      </div>
-
       <section class="converter" aria-label="Table converter">
         <section class="converter-pane" aria-labelledby="conversion-heading">
           <h2 id="conversion-heading">Conversion</h2>
@@ -44,7 +34,7 @@
           <div class="converter-field">
             <span class="converter-field-label" id="source-label">Source</span>
             <div
-              class="segmented-control"
+              class="segmented-control segmented-control--slim"
               id="source-control"
               data-segmented-control-default="tabular"
             >
@@ -63,7 +53,7 @@
           <div class="converter-field">
             <span class="converter-field-label" id="target-label">Target</span>
             <div
-              class="segmented-control"
+              class="segmented-control segmented-control--slim"
               id="target-control"
               data-segmented-control-default="dax"
             >
@@ -82,7 +72,7 @@
           <div class="converter-field" id="dax-dialect-field">
             <span class="converter-field-label" id="dax-dialect-label">DAX format</span>
             <div
-              class="segmented-control"
+              class="segmented-control segmented-control--slim"
               id="dax-dialect-control"
               data-segmented-control-default="datatable"
             >
@@ -101,7 +91,7 @@
           <div class="converter-field hidden" id="m-dialect-field" hidden>
             <span class="converter-field-label" id="m-dialect-label">M format</span>
             <div
-              class="segmented-control"
+              class="segmented-control segmented-control--slim"
               id="m-dialect-control"
               data-segmented-control-default="table"
             >
@@ -116,12 +106,34 @@
               <input type="hidden" class="segmented-control-value" name="m-dialect" value="table" />
             </div>
           </div>
+
+          <button type="button" class="btn btn-slim" id="load-example-btn">
+            Load example
+          </button>
           </div>
         </section>
 
         <div class="converter-panes">
           <section class="converter-pane" aria-labelledby="input-heading">
             <h2 id="input-heading">Input</h2>
+            <div
+              id="convert-error"
+              class="banner banner-error hidden"
+              role="alert"
+              hidden
+            >
+              <span class="banner-icon" data-icon="error" data-icon-class="banner-icon-svg"></span>
+              <span class="banner-body" id="convert-error-body">Conversion error</span>
+            </div>
+            <div
+              id="convert-warning"
+              class="banner banner-warning hidden"
+              role="status"
+              hidden
+            >
+              <span class="banner-icon" data-icon="warning" data-icon-class="banner-icon-svg"></span>
+              <span class="banner-body" id="convert-warning-body"></span>
+            </div>
             <div id="input-tabular-wrap">
               <div
                 class="tabular-input"
@@ -166,9 +178,8 @@
                 role="toolbar"
                 aria-label="Output table actions"
               >
-                <button type="button" class="btn" id="output-tabular-copy" aria-label="Copy table" data-tooltip="Copy for Excel" data-tooltip-position="top">
-                  <span data-icon="copy" data-icon-class="btn-icon-svg" aria-hidden="true"></span>
-                  <span class="converter-pane-action-label">Copy</span>
+                <button type="button" class="btn btn-label-flash" id="output-tabular-copy" aria-label="Copy table" data-tooltip="Copy for Excel" data-tooltip-position="top">
+                  <span class="btn-label-flash__label">Copy</span>
                 </button>
               </div>
               <div
@@ -360,6 +371,40 @@
           </div>
         </div>
       </div>
+
+    <div
+      id="load-example-confirm-dialog"
+      class="modal hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="load-example-confirm-dialog-title"
+      hidden
+    >
+      <div class="modal-backdrop" data-dialog-close></div>
+      <div class="modal-panel">
+        <div class="modal-header">
+          <h2 id="load-example-confirm-dialog-title">Replace current input?</h2>
+          <button type="button" class="modal-close" aria-label="Close" data-dialog-close>&times;</button>
+        </div>
+        <div class="modal-body">
+          <p>
+            Loading the example will overwrite the current input. This cannot be undone.
+          </p>
+        </div>
+        <div class="modal-footer">
+          <div class="modal-footer-actions">
+            <button type="button" class="btn" data-dialog-close>Cancel</button>
+            <button
+              type="button"
+              class="btn btn-danger"
+              id="load-example-confirm-dialog-ok"
+            >
+              Load example
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <script defer src="app/vendor/prism/prism.min.js"></script>
     <script defer src="app/vendor/prism/prism-dax.min.js"></script>

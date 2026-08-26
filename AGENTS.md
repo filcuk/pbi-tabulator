@@ -38,7 +38,7 @@ Prefer the simplest approach that fits the existing template.
 
 - Use CSS custom properties from `app/tokens.css` (`--bg`, `--surface`, `--input-bg`, `--accent`, etc.)
 - Use existing component classes: `.btn`, `.btn-primary`, `.banner`, `.code-block`, `.theme-toggle`
-- Add or edit inline UI icons in `app/utils/icons-template.js` (catalogue) or `app/utils/icons-app.js` (fork) only — do not duplicate SVG paths in HTML
+- Add or edit inline UI icons in `app/utils/icons-framework.js` (catalogue) or `app/utils/icons-app.js` (fork) only — do not duplicate SVG paths in HTML
 - Do not introduce parallel styling systems (Tailwind, CSS-in-JS, component libraries)
 
 ## Page boot conventions
@@ -47,7 +47,7 @@ Every HTML entry point should:
 
 1. Optional `window.__MICROAPP__` bridge **before** theme-init (theme key, app icons)
 2. Include blocking `app/theme-init.js` in `<head>` (prevents theme flash)
-3. Link `app/styles.css` (fork entry: `tokens.css` → `css/template.css` → `css/app.css`)
+3. Link `app/styles.css` (fork entry: `tokens.css` → `css/framework.css` → `css/app.css`)
 4. Call `initShell()` from `app/shell/shell.js` as the first step in the page module
 
 `initShell()` renders shared chrome via `renderPageShell()` (`app/shell/render-shell.js`), then boots icons, external links, heading links, theme toggle, sticky chrome offsets, tooltips, and page navigation. Do **not** duplicate footer, theme toggle, or `#page-nav` markup in HTML.
@@ -80,7 +80,7 @@ Optional `renderPageShell({ repoUrl, appUrl, brandUrl, brandName, alsoSee, alsoS
 | `initTabularInput()` / `initTabularInputs()` | Editable typed grid; paste (in-place / replace); reset; add/remove rows and columns; rename / type |
 | `onDocumentClickOutside()` / `onDocumentEscape()` | Shared document listeners — do not add per-instance `document` listeners for these |
 
-This fork pins a **partial** catalogue in [`template.lock.json`](template.lock.json). Restore extra components with the **restore-component** skill rather than copying files by hand.
+This fork pins a **partial** catalogue in [`framework.lock.json`](framework.lock.json). Restore extra components with the **restore-component** skill rather than copying files by hand.
 
 ### Document listeners
 
@@ -100,9 +100,9 @@ Always use `setHidden()` from `app/utils/dom.js` when showing/hiding elements pr
 - Declare icons with `data-icon="name"` and optional `data-icon-class="…"` in HTML
 - Call `initIcons()` (via `initShell()`) to inject SVGs
 - **Agents must not invent or generate SVG paths** — see [`.cursor/rules/icons.mdc`](.cursor/rules/icons.mdc)
-- Template catalogue: [`app/utils/icons-template.js`](app/utils/icons-template.js) (`TEMPLATE_ICONS`; synced). Fork additions: [`app/utils/icons-app.js`](app/utils/icons-app.js) (`APP_ICONS`; never overwritten). Public API: [`app/utils/icons.js`](app/utils/icons.js) (`createIcon` / `initIcons`; app wins on key clash)
+- Framework catalogue: [`app/utils/icons-framework.js`](app/utils/icons-framework.js) (`FRAMEWORK_ICONS`; synced). Fork additions: [`app/utils/icons-app.js`](app/utils/icons-app.js) (`APP_ICONS`; never overwritten). Public API: [`app/utils/icons.js`](app/utils/icons.js) (`createIcon` / `initIcons`; app wins on key clash)
 - If an icon is missing, use the **add-icon** skill or ask the user to add it to `icons-app.js` (blank stub with empty `markup` is documented in that file’s header). Reuse existing ids or `{ ref: "other-icon" }` when appropriate
-- Source SVGs from [Icônes — Google Material Icons (Round variant)](https://icones.js.org/collection/ic?s=info&variant=Round); copy path markup into `TEMPLATE_ICONS` / `APP_ICONS` and set `attribution` when required
+- Source SVGs from [Icônes — Google Material Icons (Round variant)](https://icones.js.org/collection/ic?s=info&variant=Round); copy path markup into `FRAMEWORK_ICONS` / `APP_ICONS` and set `attribution` when required
 - For sourced icons, set `name` to the original collection id (e.g. `round-info`) — metadata for traceability; omit for custom or in-house icons. The object key remains the app id used in `data-icon`
 - To alias one app id to another, use `{ ref: "other-icon" }` instead of duplicating markup (e.g. `lines: { ref: "note" }`)
 - Third-party icons that require a license notice: set `attribution` on the icon definition (use `ICON_ATTRIBUTIONS` for common sets). Rendered as an SVG comment via `createIcon()` / `initIcons()`
@@ -111,9 +111,9 @@ Always use `setHidden()` from `app/utils/dom.js` when showing/hiding elements pr
 
 | File | Contents |
 | ---- | -------- |
-| `app/styles.css` | Fork entry — `@import` only (`tokens.css` → `css/template.css` → `css/app.css`) |
+| `app/styles.css` | Fork entry — `@import` only (`tokens.css` → `css/framework.css` → `css/app.css`) |
 | `app/tokens.css` | Reset, `:root` tokens, dark theme, base typography, `.hidden`, reduced-motion |
-| `app/css/template.css` | Generated index of selected template partials (do not hand-edit) |
+| `app/css/framework.css` | Generated index of selected framework partials (do not hand-edit) |
 | `app/css/app.css` | Fork-owned styles (imports `converter.css`; never overwritten by sync) |
 | `app/css/converter.css` | Converter toolbar and two-pane layout |
 | `app/css/layout.css` | Page shell, sections, page nav, footer, theme toggle |
@@ -126,7 +126,7 @@ Always use `setHidden()` from `app/utils/dom.js` when showing/hiding elements pr
 | `app/css/table.css` | Data table layout, sort controls, and selection column |
 | `app/css/controls-tabular-input.css` | Editable typed grid (tabular input) |
 
-Keep HTML linking only `styles.css`. Fork rules go in `app/css/app.css` or `converter.css`. Do not hand-edit `template.css` or merge partials back into a monolith.
+Keep HTML linking only `styles.css`. Fork rules go in `app/css/app.css` or `converter.css`. Do not hand-edit `framework.css` or merge partials back into a monolith.
 
 ## JS module layers
 
@@ -137,7 +137,7 @@ Modules live under `app/shell/`, `app/utils/`, and `app/components/` (no build s
 | Entry | `main.js`, `converter-app.js`, `theme-init.js`, `config.js`, `version.js` | Loaded directly from HTML |
 | Convert | `app/convert/*` | DAX/M parse and generate (no DOM) |
 | Shell | `app/shell/shell.js`, `render-shell.js`, `theme.js`, `page-nav.js`, `sticky.js`, … | Shared page chrome via `initShell()` |
-| Infrastructure | `app/utils/dom.js`, `document-listeners.js`, `clipboard.js`, `icons.js` (merge), `icons-template.js`, `icons-app.js`, `menu.js`, `brand-icon.js` | Shared helpers and registries |
+| Infrastructure | `app/utils/dom.js`, `document-listeners.js`, `clipboard.js`, `icons.js` (merge), `icons-framework.js`, `icons-app.js`, `menu.js`, `brand-icon.js` | Shared helpers and registries |
 | Components | `app/components/code-block.js`, `tabular-input.js`, `toggle.js`, … | One `initX` (or `initXs`) per feature — import only what you need |
 
 Respect `prefers-reduced-motion: reduce` — transitions live in components; global overrides are in `tokens.css`. JS scroll behaviour should use `prefersReducedMotion()` from `app/utils/dom.js`.
@@ -149,10 +149,10 @@ After cloning, run `npm ci`, then:
 ```bash
 npm run lint
 npm test
-npm run verify:template
+npm run verify:framework
 ```
 
-CI runs lint and tests on push and pull requests (`.github/workflows/ci.yml`). Pin and sync the template with [`template.lock.json`](template.lock.json) (`npm run sync:template` / `npm run verify:template`).
+CI runs lint and tests on push and pull requests (`.github/workflows/ci.yml`). Pin and sync the framework with [`framework.lock.json`](framework.lock.json) (`npm run sync:framework` / `npm run verify:framework`).
 
 ## Keep GitHub Pages deployable
 
@@ -181,8 +181,8 @@ Match the established look (based on [pqm-stepper](https://github.com/filcuk/pqm
 
 ## When extending this template
 
-1. Read `USAGE.md` for the template catalogue and fork instructions
-2. Check [`template.lock.json`](template.lock.json) for which components this app actually ships
+1. Read `USAGE.md` for the framework catalogue and fork instructions
+2. Check [`framework.lock.json`](framework.lock.json) for which components this app actually ships
 3. Keep changes focused — one concern per file when possible
 4. Update `USAGE.md` when you add or change a reusable component, module API, or deploy workflow (see `.cursor/rules/usage-docs.mdc`)
 5. Update `AGENTS.md` if you add a new `initX` pattern to the module conventions table
