@@ -23,6 +23,8 @@ import { initDialog } from "./components/dialog.js";
 import { showBanner, hideBanner } from "./components/banner.js";
 import {
   ConvertError,
+  DAX_DIALECTS,
+  M_DIALECTS,
   cloneTable,
   createEmptyTable,
   generate,
@@ -37,6 +39,87 @@ import {
 } from "./convert/output-types.js";
 
 const DEBOUNCE_MS = 280;
+const STATE_STORAGE_KEY = "pbi-tabulator-converter-state";
+const STATE_VERSION = 1;
+const LANGS = new Set(["tabular", "dax", "m"]);
+
+/**
+ * @param {unknown} value
+ * @returns {value is import("./convert/model.js").DaxDialect}
+ */
+function isDaxDialect(value) {
+  return DAX_DIALECTS.includes(
+    /** @type {import("./convert/model.js").DaxDialect} */ (value)
+  );
+}
+
+/**
+ * @param {unknown} value
+ * @returns {value is import("./convert/model.js").MDialect}
+ */
+function isMDialect(value) {
+  return M_DIALECTS.includes(
+    /** @type {import("./convert/model.js").MDialect} */ (value)
+  );
+}
+
+/**
+ * @returns {{
+ *   source: string,
+ *   target: string,
+ *   daxDialect: string,
+ *   mDialect: string,
+ *   model: import("./convert/model.js").TableModel | null,
+ *   inputCode: string | null,
+ *   typeConfig: Array<{ id: string, outputType: string, locked: boolean }>,
+ * } | null}
+ */
+function readPersistedState() {
+  try {
+    const raw = localStorage.getItem(STATE_STORAGE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!data || data.v !== STATE_VERSION) return null;
+
+    const source = LANGS.has(data.source) ? data.source : null;
+    const target = LANGS.has(data.target) ? data.target : null;
+    if (!source || !target) return null;
+
+    let nextSource = source;
+    let nextTarget = target;
+    if (nextSource === nextTarget) {
+      nextTarget = nextSource === "tabular" ? "dax" : "tabular";
+    }
+
+    return {
+      source: nextSource,
+      target: nextTarget,
+      daxDialect: isDaxDialect(data.daxDialect) ? data.daxDialect : "datatable",
+      mDialect: isMDialect(data.mDialect) ? data.mDialect : "table",
+      model:
+        data.model && typeof data.model === "object"
+          ? normalizeTable(data.model)
+          : null,
+      inputCode: typeof data.inputCode === "string" ? data.inputCode : null,
+      typeConfig: Array.isArray(data.typeConfig)
+        ? data.typeConfig
+            .filter(
+              (entry) =>
+                entry &&
+                typeof entry.id === "string" &&
+                typeof entry.outputType === "string"
+            )
+            .map((entry) => ({
+              id: entry.id,
+              outputType: entry.outputType,
+              locked: Boolean(entry.locked),
+            }))
+        : [],
+    };
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Copy text to the clipboard (Clipboard API, with execCommand fallback).
@@ -312,13 +395,16 @@ export function initConverterApp({ root = document } = {}) {
   const configHint = root.querySelector(".converter-config-hint");
   const configColumnsEl = root.querySelector("#config-columns");
 
-  /** @type {import("./convert/model.js").TableModel} */
-  let model = createEmptyTable({ columnCount: 6, rowCount: 2 });
+  const saved = readPersistedState();
 
-  let source = "tabular";
-  let target = "dax";
-  let daxDialect = "datatable";
-  let mDialect = "table";
+  /** @type {import("./convert/model.js").TableModel} */
+  let model =
+    saved?.model ?? createEmptyTable({ columnCount: 6, rowCount: 2 });
+
+  let source = saved?.source ?? "tabular";
+  let target = saved?.target ?? "dax";
+  let daxDialect = saved?.daxDialect ?? "datatable";
+  let mDialect = saved?.mDialect ?? "table";
   let alignCommas = false;
   let minimised = false;
   let commaFirst = false;
@@ -326,6 +412,8 @@ export function initConverterApp({ root = document } = {}) {
   let convertGen = 0;
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let debounceTimer;
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let persistTimer;
   /** @type {ReturnType<typeof initTable> | null} */
   let outputTable = null;
 
@@ -339,6 +427,40 @@ export function initConverterApp({ root = document } = {}) {
     configDropdowns = [];
   }
 
+  function persistState() {
+    try {
+      const table =
+        source === "tabular"
+          ? normalizeTable(inputTabular?.getData() ?? model)
+          : model;
+      const payload = {
+        v: STATE_VERSION,
+        source,
+        target,
+        daxDialect,
+        mDialect,
+        model: cloneTable(table),
+        inputCode:
+          source === "dax" || source === "m"
+            ? (inputCode?.getSource() ?? "")
+            : "",
+        typeConfig: [...typeConfig.entries()].map(([id, cfg]) => ({
+          id,
+          outputType: cfg.outputType,
+          locked: Boolean(cfg.locked),
+        })),
+      };
+      localStorage.setItem(STATE_STORAGE_KEY, JSON.stringify(payload));
+    } catch {
+      // QuotaExceeded / private mode — ignore.
+    }
+  }
+
+  function schedulePersist() {
+    clearTimeout(persistTimer);
+    persistTimer = setTimeout(persistState, DEBOUNCE_MS);
+  }
+
   const inputTabular = initTabularInput(root.querySelector("#input-tabular"), {
     columns: model.columns,
     rows: model.rows,
@@ -349,6 +471,7 @@ export function initConverterApp({ root = document } = {}) {
       syncTypeConfigFromModel({ remappingLang: null });
       renderConfigUi();
       scheduleConvert();
+      schedulePersist();
     },
   });
 
@@ -360,6 +483,14 @@ export function initConverterApp({ root = document } = {}) {
     surfaceActions: "none",
   });
 
+  if (
+    (source === "dax" || source === "m") &&
+    typeof saved?.inputCode === "string"
+  ) {
+    syncing = true;
+    inputCode?.setSource(saved.inputCode);
+    syncing = false;
+  }
   const outputCodeEl = root.querySelector("#output-code");
   const outputCodeExtras = root.querySelector("#output-code-extras");
 
@@ -457,7 +588,7 @@ export function initConverterApp({ root = document } = {}) {
   });
 
   const sourceControl = initSegmentedControl(root.querySelector("#source-control"), {
-    defaultValue: "tabular",
+    defaultValue: source,
     onChange({ value, source: changeSource }) {
       if (changeSource === "init" || syncing) return;
       void onSourceChange(value);
@@ -465,7 +596,7 @@ export function initConverterApp({ root = document } = {}) {
   });
 
   const targetControl = initSegmentedControl(root.querySelector("#target-control"), {
-    defaultValue: "dax",
+    defaultValue: target,
     onChange({ value, source: changeSource }) {
       if (changeSource === "init" || syncing) return;
       void onTargetChange(value);
@@ -475,23 +606,25 @@ export function initConverterApp({ root = document } = {}) {
   const daxDialectControl = initSegmentedControl(
     root.querySelector("#dax-dialect-control"),
     {
-      defaultValue: "datatable",
+      defaultValue: daxDialect,
       onChange({ value, source: changeSource }) {
         if (changeSource === "init") return;
         daxDialect = value;
         void runConvert();
+        schedulePersist();
       },
     }
   );
 
   initSegmentedControl(root.querySelector("#m-dialect-control"), {
-    defaultValue: "table",
+    defaultValue: mDialect,
     onChange({ value, source: changeSource }) {
       if (changeSource === "init") return;
       mDialect = value;
       updatePaneVisibility();
       renderConfigUi();
       void runConvert();
+      schedulePersist();
     },
   });
 
@@ -551,6 +684,7 @@ export function initConverterApp({ root = document } = {}) {
     debounceTimer = setTimeout(() => {
       void runConvert();
     }, DEBOUNCE_MS);
+    schedulePersist();
   }
 
   /** @returns {"dax" | "m" | null} */
@@ -715,6 +849,7 @@ export function initConverterApp({ root = document } = {}) {
         typeConfig.set(col.id, { outputType: value, locked: true });
         renderConfigUi();
         void runConvert();
+        schedulePersist();
       },
     });
     if (api) configDropdowns.push(api);
@@ -789,6 +924,7 @@ export function initConverterApp({ root = document } = {}) {
           });
           renderConfigUi();
           void runConvert();
+          schedulePersist();
         });
       }
 
@@ -883,6 +1019,7 @@ export function initConverterApp({ root = document } = {}) {
     }
 
     await runConvert();
+    schedulePersist();
   }
 
   /**
@@ -924,6 +1061,7 @@ export function initConverterApp({ root = document } = {}) {
     updatePaneVisibility();
     renderConfigUi();
     await runConvert();
+    schedulePersist();
   }
 
   async function runConvert() {
@@ -966,11 +1104,26 @@ export function initConverterApp({ root = document } = {}) {
     }
   }
 
+  if (saved?.typeConfig?.length) {
+    for (const entry of saved.typeConfig) {
+      typeConfig.set(entry.id, {
+        outputType: entry.outputType,
+        locked: entry.locked,
+      });
+    }
+  }
+
   syncTypeConfigFromModel();
   updateDialectVisibility();
   updatePaneVisibility();
   renderConfigUi();
   void runConvert();
+  schedulePersist();
+
+  window.addEventListener("pagehide", () => {
+    clearTimeout(persistTimer);
+    persistState();
+  });
 
   /**
    * True when every cell is still the type default (no user content).
@@ -1029,6 +1182,7 @@ export function initConverterApp({ root = document } = {}) {
     }
 
     await runConvert();
+    schedulePersist();
   }
 
   const loadExampleConfirmDialog = initDialog({
@@ -1067,6 +1221,7 @@ export function initConverterApp({ root = document } = {}) {
       daxDialectControl?.selectValue("datatable", { emit: false });
       updateDialectVisibility();
       await runConvert();
+      schedulePersist();
     }
   }
 
