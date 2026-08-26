@@ -13,6 +13,10 @@
   align-items: flex-end;
 }
 
+#load-example-btn {
+  margin-inline-start: auto;
+}
+
 .converter-field {
   display: flex;
   flex-direction: column;
