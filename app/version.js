@@ -9,4 +9,4 @@
 export const FRAMEWORK_VERSION = "0.13.1";
 
 /** @type {`${number}.${number}.${number}`} */
-export const APP_VERSION = "1.2.2";
+export const APP_VERSION = "1.3.0";
